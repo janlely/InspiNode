@@ -1,0 +1,50 @@
+import * as React from 'react';
+import { DarkTheme, DefaultTheme, NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as RNLocalize from 'react-native-localize';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useColorScheme } from 'react-native';
+import i18n from './i18n';
+import { RootStackParamList } from './Types';
+import Home from './pages/Home';
+
+const Stack = createStackNavigator<RootStackParamList>();
+
+const App = () => {
+  const navigationRef = React.useRef<NavigationContainerRef<RootStackParamList>>(null);
+  const scheme = useColorScheme();
+
+  React.useEffect(() => {
+    const locales = RNLocalize.getLocales();
+    if (Array.isArray(locales)) {
+      const deviceLanguage = locales[0].languageCode;
+      console.log('deviceLanguage: ', deviceLanguage);
+      setLanguage(deviceLanguage);
+      i18n.changeLanguage(deviceLanguage);
+    }
+  }, []);
+
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <NavigationContainer ref={navigationRef} theme={scheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <Stack.Navigator>
+            <Stack.Screen
+              name="Home"
+              component={Home}
+              options={{ headerShown: false }}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  );
+};
+
+export default App;
+function setLanguage(deviceLanguage: string) {
+  console.log('setLanguage: ', deviceLanguage);
+}
+
