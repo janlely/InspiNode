@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,17 +12,15 @@ import {
   TouchableOpacity,
   Pressable,
   Keyboard,
-  Dimensions,
   KeyboardAvoidingView,
 } from 'react-native';
-import { ideaDB, IdeaRecord, NewIdea, UpdateIdea } from '../utils/IdeaDatabase';
+import { ideaDB, NewIdea, UpdateIdea } from '../utils/IdeaDatabase';
 
 interface IdeaItem {
   id: string;
   text: string;
   dbId?: number; // 数据库中的真实ID
   manualCategory?: string; // 手动选择的分类
-  isEditing?: boolean; // 是否处于编辑状态
 }
 
 // 内容分类枚举
@@ -73,7 +71,6 @@ export default function Home() {
   const inputRefs = useRef<{ [key: string]: TextInput | null }>({});
   const emptyInputRef = useRef<TextInput | null>(null);
   const flatListRef = useRef<FlatList | null>(null);
-  const screenData = Dimensions.get('window');
   
   useEffect(() => {
     initializeApp();
@@ -133,24 +130,6 @@ export default function Home() {
     return ContentType.NOTE; // 默认分类
   };
 
-  // 获取内容类型对应的图标（优先使用手动分类）
-  const getContentIcon = (text: string, manualCategory?: string): string => {
-    if (manualCategory && CONTENT_TYPES[manualCategory as ContentType]) {
-      return CONTENT_TYPES[manualCategory as ContentType].icon;
-    }
-    const type = detectContentType(text);
-    return CONTENT_TYPES[type].icon;
-  };
-
-  // 获取内容类型名称（用于调试）
-  const getContentTypeName = (text: string, manualCategory?: string): string => {
-    if (manualCategory && CONTENT_TYPES[manualCategory as ContentType]) {
-      return CONTENT_TYPES[manualCategory as ContentType].name;
-    }
-    const type = detectContentType(text);
-    return CONTENT_TYPES[type].name;
-  };
-
   // 获取最终的分类类型
   const getFinalContentType = (text: string, manualCategory?: string): ContentType => {
     if (manualCategory && CONTENT_TYPES[manualCategory as ContentType]) {
@@ -159,13 +138,24 @@ export default function Home() {
     return detectContentType(text);
   };
 
+  // 获取内容类型对应的图标
+  const getContentIcon = (text: string, manualCategory?: string): string => {
+    const type = getFinalContentType(text, manualCategory);
+    return CONTENT_TYPES[type].icon;
+  };
+
+  // 获取内容类型名称（用于调试）
+  const getContentTypeName = (text: string, manualCategory?: string): string => {
+    const type = getFinalContentType(text, manualCategory);
+    return CONTENT_TYPES[type].name;
+  };
+
   const initializeApp = async () => {
     try {
       setIsLoading(true);
       
       // 初始化数据库
       await ideaDB.initialize();
-      console.log('✅ Database initialized');
       
       // 设置当前日期
       const now = new Date();
@@ -194,7 +184,6 @@ export default function Home() {
 
   const loadTodayIdeas = async (dateString: string) => {
     try {
-      console.log('📅 Loading ideas for date:', dateString);
       const dbIdeas = await ideaDB.getIdeasByDate(dateString);
       
       const formattedIdeas: IdeaItem[] = dbIdeas.map((dbIdea) => ({
@@ -202,11 +191,9 @@ export default function Home() {
         text: dbIdea.hint,
         dbId: dbIdea.id,
         manualCategory: dbIdea.category || undefined,
-        isEditing: false,
       }));
       
       setIdeas(formattedIdeas);
-      console.log(`✅ Loaded ${formattedIdeas.length} ideas from database`);
     } catch (error) {
       console.error('❌ Failed to load ideas:', error);
       Alert.alert('错误', '加载想法失败');
@@ -228,33 +215,28 @@ export default function Home() {
   };
 
   // 处理输入框聚焦，执行自动滚动
-  const handleInputFocus = (inputId: string, index: number) => {
-    console.log(`👁️ Input focused: ${inputId}, index: ${index}`);
-    
+  const handleInputFocus = useCallback((inputId: string, index: number) => {
     // 延迟执行滚动，等待键盘完全弹出
     setTimeout(() => {
-      if (flatListRef.current && keyboardVisible) {
-        // 简单的滚动逻辑：如果是后面的输入框，滚动到可见位置
-        if (index > 2) {
-          try {
-            if (inputId === 'empty') {
-              // 最后一个输入框，滚动到底部
-              flatListRef.current.scrollToEnd({ animated: true });
-            } else {
-              // 其他输入框，滚动到指定位置
-              flatListRef.current.scrollToIndex({
-                index: index,
-                animated: true,
-                viewPosition: 0.25,
-              });
-            }
-          } catch (error) {
-            console.log('滚动失败，忽略:', error);
+      if (flatListRef.current && keyboardVisible && index > 2) {
+        try {
+          if (inputId === 'empty') {
+            // 最后一个输入框，滚动到底部
+            flatListRef.current.scrollToEnd({ animated: true });
+          } else {
+            // 其他输入框，滚动到指定位置
+            flatListRef.current.scrollToIndex({
+              index: index,
+              animated: true,
+              viewPosition: 0.25,
+            });
           }
+        } catch (error) {
+          // 滚动失败时忽略错误
         }
       }
-    }, 300); // 增加延迟时间，确保键盘稳定
-  };
+    }, 300);
+  }, [keyboardVisible]);
 
   // 更新想法文本
   const updateIdea = async (id: string, text: string) => {
@@ -279,7 +261,6 @@ export default function Home() {
       if (idea.dbId) {
         try {
           await ideaDB.deleteIdea(idea.dbId);
-          console.log(`🗑️ Deleted empty idea with DB ID: ${idea.dbId}`);
         } catch (error) {
           console.error(`❌ Failed to delete idea ${idea.dbId}:`, error);
         }
@@ -297,7 +278,6 @@ export default function Home() {
         };
         
         await ideaDB.updateIdea(idea.dbId, updatedRecord);
-        console.log(`💾 Updated idea with DB ID: ${idea.dbId}`);
       } else {
         // 创建新记录
         const newIdea: NewIdea = {
@@ -316,7 +296,6 @@ export default function Home() {
           )
         );
         
-        console.log(`💾 Saved idea to database with ID: ${dbId}`);
       }
     } catch (error) {
       console.error('❌ Failed to save idea:', error);
@@ -353,8 +332,7 @@ export default function Home() {
       if (targetIdea?.dbId) {
         try {
           await ideaDB.updateIdea(targetIdea.dbId, { category });
-          console.log(`✅ Updated category for idea ${targetIdea.dbId} to ${category}`);
-        } catch (error) {
+          } catch (error) {
           console.error('❌ Failed to update category:', error);
           Alert.alert('错误', '更新分类失败');
         }
@@ -389,7 +367,6 @@ export default function Home() {
         text: emptyInputValue.trim(),
         dbId: dbId,
         manualCategory: emptyInputCategory,
-        isEditing: false,
       };
       
       // 添加到列表
@@ -398,8 +375,6 @@ export default function Home() {
       // 清空输入框
       setEmptyInputValue('');
       setEmptyInputCategory(undefined);
-      
-      console.log(`💾 Created new idea with DB ID: ${dbId}`);
       
     } catch (error) {
       console.error('❌ Failed to create idea:', error);
@@ -461,11 +436,7 @@ export default function Home() {
           </TouchableOpacity>
         )}
         
-        {__DEV__ && item.text.trim() && (
-          <Text style={styles.typeIndicator}>
-            {getContentTypeName(item.text, item.manualCategory)}
-          </Text>
-        )}
+
       </View>
     );
   };
@@ -494,11 +465,7 @@ export default function Home() {
         onSubmitEditing={handleEmptyInputSubmit}
         onFocus={() => handleInputFocus('empty', ideas.length)}
       />
-      {__DEV__ && emptyInputValue.trim() && (
-        <Text style={styles.typeIndicator}>
-          {getContentTypeName(emptyInputValue, emptyInputCategory)}
-        </Text>
-      )}
+
     </View>
   );
 
@@ -558,22 +525,7 @@ export default function Home() {
       {/* 日期头部 */}
       <View style={styles.header}>
         <Text style={styles.dateText}>{currentDate}</Text>
-        {__DEV__ && (
-          <View style={styles.debugContainer}>
-            <Text style={styles.debugText}>
-              数据库想法: {ideas.filter(i => i.dbId).length} | 本地想法: {ideas.length}
-            </Text>
-            <Text style={styles.debugText}>
-              📝{ideas.filter(i => getFinalContentType(i.text, i.manualCategory) === ContentType.TODO).length} | 
-              💡{ideas.filter(i => getFinalContentType(i.text, i.manualCategory) === ContentType.IDEA).length} | 
-              📚{ideas.filter(i => getFinalContentType(i.text, i.manualCategory) === ContentType.LEARNING).length} | 
-              📄{ideas.filter(i => getFinalContentType(i.text, i.manualCategory) === ContentType.NOTE).length}
-            </Text>
-            <Text style={styles.debugText}>
-              编辑中: {editingIdeaId || '无'} | 键盘: {keyboardVisible ? `显示(${keyboardHeight}px)` : '隐藏'}
-            </Text>
-          </View>
-        )}
+
       </View>
 
       {/* 想法列表 */}
@@ -598,11 +550,10 @@ export default function Home() {
           keyboardDismissMode="none"
           contentContainerStyle={[
             styles.listContent,
-            { paddingBottom: Math.max(20, keyboardHeight > 0 ? 20 : 20) }
+            { paddingBottom: 20 }
           ]}
-          onScrollToIndexFailed={(info) => {
-            // 处理滚动失败的情况
-            console.log('滚动到索引失败:', info);
+          onScrollToIndexFailed={() => {
+            // 滚动失败时忽略
           }}
           scrollEventThrottle={16}
           removeClippedSubviews={false}
@@ -642,16 +593,7 @@ const styles = StyleSheet.create({
     color: '#343a40',
     textAlign: 'center',
   },
-  debugContainer: {
-    marginTop: 8,
-    alignItems: 'center',
-  },
-  debugText: {
-    fontSize: 12,
-    color: '#6c757d',
-    textAlign: 'center',
-    marginTop: 2,
-  },
+
   listContainer: {
     flex: 1,
   },
@@ -693,12 +635,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     minHeight: 24,
   },
-  typeIndicator: {
-    fontSize: 10,
-    color: '#adb5bd',
-    fontStyle: 'italic',
-    marginLeft: 8,
-  },
+
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
