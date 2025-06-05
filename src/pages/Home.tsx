@@ -15,13 +15,14 @@ import {
   Dimensions,
   KeyboardAvoidingView,
 } from 'react-native';
-import { ideaDB, IdeaRecord } from '../utils/IdeaDatabase';
+import { ideaDB, IdeaRecord, NewIdea, UpdateIdea } from '../utils/IdeaDatabase';
 
 interface IdeaItem {
   id: string;
   text: string;
   dbId?: number; // 数据库中的真实ID
   manualCategory?: string; // 手动选择的分类
+  isEditing?: boolean; // 是否处于编辑状态
 }
 
 // 内容分类枚举
@@ -65,13 +66,47 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [selectedIdeaForCategory, setSelectedIdeaForCategory] = useState<string | null>(null);
-  // const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [editingIdeaId, setEditingIdeaId] = useState<string | null>(null);
+  
   const inputRefs = useRef<{ [key: string]: TextInput | null }>({});
   const emptyInputRef = useRef<TextInput | null>(null);
   const flatListRef = useRef<FlatList | null>(null);
+  const screenData = Dimensions.get('window');
   
   useEffect(() => {
     initializeApp();
+    
+    // 键盘事件监听
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      (e) => {
+        setKeyboardHeight(e.endCoordinates.height);
+        setKeyboardVisible(true);
+      }
+    );
+    
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+        setKeyboardVisible(false);
+        // 延迟清除编辑状态，给切换编辑目标留时间
+        setTimeout(() => {
+          // 检查是否有输入框仍然聚焦，如果没有才清除编辑状态
+          const hasActiveInput = Object.values(inputRefs.current).some(ref => ref?.isFocused());
+          if (!hasActiveInput) {
+            setEditingIdeaId(null);
+          }
+        }, 200);
+      }
+    );
+    
+    return () => {
+      keyboardDidShowListener?.remove();
+      keyboardDidHideListener?.remove();
+    };
   }, []);
 
   // 智能识别内容类型（仅当没有手动分类时使用）
@@ -167,6 +202,7 @@ export default function Home() {
         text: dbIdea.hint,
         dbId: dbIdea.id,
         manualCategory: dbIdea.category || undefined,
+        isEditing: false,
       }));
       
       setIdeas(formattedIdeas);
@@ -177,201 +213,103 @@ export default function Home() {
     }
   };
 
-  const addNewIdea = async () => {
-    const newId = Date.now().toString();
-    const newIdea: IdeaItem = {
-      id: newId,
-      text: '',
-    };
-    setIdeas(prev => [...prev, newIdea]);
+  // 点击想法文本，进入编辑模式
+  const handleIdeaPress = (ideaId: string) => {
+    // 如果已经有元素在编辑中，先完成当前编辑
+    if (editingIdeaId && editingIdeaId !== ideaId) {
+      finishEditingIdea(editingIdeaId);
+    }
     
-    // 延迟聚焦新输入框
+    setEditingIdeaId(ideaId);
+    // 延迟聚焦，确保输入框已渲染
     setTimeout(() => {
-      inputRefs.current[newId]?.focus();
+      inputRefs.current[ideaId]?.focus();
     }, 100);
   };
 
+  // 处理输入框聚焦，执行自动滚动
+  const handleInputFocus = (inputId: string, index: number) => {
+    console.log(`👁️ Input focused: ${inputId}, index: ${index}`);
+    
+    // 延迟执行滚动，等待键盘完全弹出
+    setTimeout(() => {
+      if (flatListRef.current && keyboardVisible) {
+        // 简单的滚动逻辑：如果是后面的输入框，滚动到可见位置
+        if (index > 2) {
+          try {
+            if (inputId === 'empty') {
+              // 最后一个输入框，滚动到底部
+              flatListRef.current.scrollToEnd({ animated: true });
+            } else {
+              // 其他输入框，滚动到指定位置
+              flatListRef.current.scrollToIndex({
+                index: index,
+                animated: true,
+                viewPosition: 0.25,
+              });
+            }
+          } catch (error) {
+            console.log('滚动失败，忽略:', error);
+          }
+        }
+      }
+    }, 300); // 增加延迟时间，确保键盘稳定
+  };
+
+  // 更新想法文本
   const updateIdea = async (id: string, text: string) => {
-    // 更新本地状态
     setIdeas(prev => 
       prev.map(idea => 
         idea.id === id ? { ...idea, text } : idea
       )
     );
-
-    // 如果想法已存在于数据库中，则更新数据库
-    const idea = ideas.find(idea => idea.id === id);
-    if (idea?.dbId) {
-      try {
-        await ideaDB.updateIdea(idea.dbId, { hint: text });
-        console.log(`✏️ Updated idea in database: ${idea.dbId}`);
-      } catch (error) {
-        console.error('❌ Failed to update idea in database:', error);
-        // 可以选择显示警告，但不影响用户体验
-      }
-    }
   };
 
-  const handleSubmitEditing = (id: string) => {
-    const currentIdea = ideas.find(idea => idea.id === id);
-    if (currentIdea?.text.trim()) {
-      addNewIdea();
-    }
-  };
-
-  // 处理图标点击，打开分类选择器
-  const handleIconPress = (ideaId: string) => {
-    setSelectedIdeaForCategory(ideaId);
-    setShowCategoryModal(true);
-  };
-
-  // 处理空输入框图标点击
-  const handleEmptyInputIconPress = () => {
-    setSelectedIdeaForCategory('empty');
-    setShowCategoryModal(true);
-  };
-
-  // 处理分类选择
-  const handleCategorySelect = async (category: ContentType) => {
-    if (!selectedIdeaForCategory) return;
-
-    if (selectedIdeaForCategory === 'empty') {
-      // 处理空输入框的分类选择
-      setEmptyInputCategory(category);
-      console.log(`🏷️ Set empty input category: ${category}`);
-    } else {
-      // 更新本地状态
-      setIdeas(prev => 
-        prev.map(idea => 
-          idea.id === selectedIdeaForCategory 
-            ? { ...idea, manualCategory: category }
-            : idea
-        )
-      );
-
-      // 如果是已保存的想法，更新数据库
-      const idea = ideas.find(idea => idea.id === selectedIdeaForCategory);
-      if (idea?.dbId) {
-        try {
-          await ideaDB.updateIdea(idea.dbId, { category });
-          console.log(`🏷️ Updated category in database: ${idea.dbId} -> ${category}`);
-        } catch (error) {
-          console.error('❌ Failed to update category in database:', error);
-        }
-      }
-    }
-
-    // 关闭模态框
-    setShowCategoryModal(false);
-    setSelectedIdeaForCategory(null);
-  };
-
-  const createIdeaFromEmptyInput = async () => {
-    if (emptyInputValue.trim()) {
-      try {
-        console.log('💾 Saving new idea to database:', emptyInputValue.trim());
-        
-        // 保存到数据库
-        const dbId = await ideaDB.addIdea({
-          hint: emptyInputValue.trim(),
-          detail: '',
-          date: currentDateString,
-          category: emptyInputCategory,
-        });
-
-        // 更新本地状态
-        const newId = Date.now().toString();
-        const newIdea: IdeaItem = {
-          id: newId,
-          text: emptyInputValue.trim(),
-          dbId: dbId,
-          manualCategory: emptyInputCategory,
-        };
-        
-        setIdeas(prev => [...prev, newIdea]);
-        setEmptyInputValue(''); // 清空输入框
-        setEmptyInputCategory(undefined); // 重置分类选择
-        
-        console.log(`✅ New idea created with database ID: ${dbId}`);
-        
-        // 聚焦到新创建的输入框
-        setTimeout(() => {
-          inputRefs.current[newId]?.focus();
-        }, 100);
-      } catch (error) {
-        console.error('❌ Failed to create idea:', error);
-        Alert.alert('错误', '保存想法失败');
-      }
-    }
-  };
-
-  const handleEmptyInputSubmit = () => {
-    if (emptyInputValue.trim()) {
-      createIdeaFromEmptyInput();
-    }
-  };
-
-  const handleEmptyInputBlur = () => {
-    // 失去焦点时，如果有内容就创建新的idea
-    createIdeaFromEmptyInput();
-  };
-
-  const handleEmptyInputChange = (text: string) => {
-    setEmptyInputValue(text);
-  };
-
-  const removeEmptyIdeas = async () => {
-    const emptyIdeas = ideas.filter(idea => !idea.text.trim());
-    
-    // 从数据库删除空的想法
-    for (const emptyIdea of emptyIdeas) {
-      if (emptyIdea.dbId) {
-        try {
-          await ideaDB.deleteIdea(emptyIdea.dbId);
-          console.log(`🗑️ Deleted empty idea from database: ${emptyIdea.dbId}`);
-        } catch (error) {
-          console.error('❌ Failed to delete empty idea:', error);
-        }
-      }
-    }
-
-    // 更新本地状态
-    const filteredIdeas = ideas.filter(idea => idea.text.trim() !== '');
-    setIdeas(filteredIdeas);
-    
-    if (emptyIdeas.length > 0) {
-      console.log(`🧹 Cleaned up ${emptyIdeas.length} empty ideas`);
-    }
-  };
-
-  // 处理想法失去焦点时的逻辑
-  const handleIdeaBlur = async (id: string) => {
-    const idea = ideas.find(idea => idea.id === id);
+  // 完成编辑（保存想法）
+  const finishEditingIdea = async (id: string) => {
+    const idea = ideas.find(i => i.id === id);
     if (!idea) return;
-
-    if (!idea.text.trim()) {
-      // 如果内容为空，删除这个想法
+    
+    setEditingIdeaId(null);
+    
+    if (idea.text.trim() === '') {
+      // 如果文本为空，删除这个想法
+      setIdeas(prev => prev.filter(i => i.id !== id));
+      
       if (idea.dbId) {
         try {
           await ideaDB.deleteIdea(idea.dbId);
-          console.log(`🗑️ Deleted empty idea: ${idea.dbId}`);
+          console.log(`🗑️ Deleted empty idea with DB ID: ${idea.dbId}`);
         } catch (error) {
-          console.error('❌ Failed to delete idea:', error);
+          console.error(`❌ Failed to delete idea ${idea.dbId}:`, error);
         }
       }
-      // 从本地状态中移除
-      setIdeas(prev => prev.filter(i => i.id !== id));
-    } else if (!idea.dbId) {
-      // 如果有内容但还没保存到数据库，则保存
-      try {
-        const dbId = await ideaDB.addIdea({
-          hint: idea.text,
+      return;
+    }
+    
+    // 保存或更新到数据库
+    try {
+      if (idea.dbId) {
+        // 更新现有记录
+        const updatedRecord: UpdateIdea = {
+          hint: idea.text.trim(),
+          category: getFinalContentType(idea.text, idea.manualCategory),
+        };
+        
+        await ideaDB.updateIdea(idea.dbId, updatedRecord);
+        console.log(`💾 Updated idea with DB ID: ${idea.dbId}`);
+      } else {
+        // 创建新记录
+        const newIdea: NewIdea = {
+          hint: idea.text.trim(),
           detail: '',
           date: currentDateString,
-          category: idea.manualCategory,
-        });
+          category: getFinalContentType(idea.text, idea.manualCategory),
+        };
         
-        // 更新本地状态，添加数据库ID
+        const dbId = await ideaDB.addIdea(newIdea);
+        
+        // 更新本地状态以包含数据库ID
         setIdeas(prev => 
           prev.map(i => 
             i.id === id ? { ...i, dbId } : i
@@ -379,47 +317,160 @@ export default function Home() {
         );
         
         console.log(`💾 Saved idea to database with ID: ${dbId}`);
-      } catch (error) {
-        console.error('❌ Failed to save idea:', error);
-        Alert.alert('错误', '保存想法失败');
       }
+    } catch (error) {
+      console.error('❌ Failed to save idea:', error);
+      Alert.alert('错误', '保存想法失败');
     }
   };
 
-  const renderIdeaItem = ({ item, index }: { item: IdeaItem; index: number }) => (
-    <View style={styles.ideaContainer}>
-      <TouchableOpacity 
-        style={styles.iconContainer}
-        onPress={() => handleIconPress(item.id)}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      >
-        <Text style={styles.contentIcon}>
-          {getContentIcon(item.text, item.manualCategory)}
-        </Text>
-      </TouchableOpacity>
-      <TextInput
-        ref={(ref) => {
-          inputRefs.current[item.id] = ref;
-        }}
-        style={styles.ideaInput}
-        value={item.text}
-        onChangeText={(text) => updateIdea(item.id, text)}
-        placeholder="记录你的想法..."
-        placeholderTextColor="#999"
-        multiline={false}
-        returnKeyType="done"
-        onSubmitEditing={() => handleSubmitEditing(item.id)}
-        onBlur={() => handleIdeaBlur(item.id)}
-        blurOnSubmit={false}
-      />
-      {__DEV__ && item.text.trim() && (
-        <Text style={styles.typeIndicator}>
-          {getContentTypeName(item.text, item.manualCategory)}
-        </Text>
-      )}
-    </View>
-  );
+  // 处理分类选择
+  const handleIconPress = (ideaId: string) => {
+    setSelectedIdeaForCategory(ideaId);
+    setShowCategoryModal(true);
+  };
 
+  const handleEmptyInputIconPress = () => {
+    setSelectedIdeaForCategory('empty');
+    setShowCategoryModal(true);
+  };
+
+  const handleCategorySelect = async (category: ContentType) => {
+    if (selectedIdeaForCategory === 'empty') {
+      setEmptyInputCategory(category);
+    } else if (selectedIdeaForCategory) {
+      // 更新对应idea的分类
+      setIdeas(prev => 
+        prev.map(idea => 
+          idea.id === selectedIdeaForCategory 
+            ? { ...idea, manualCategory: category }
+            : idea
+        )
+      );
+      
+      // 如果这个idea已经保存到数据库，更新数据库中的分类
+      const targetIdea = ideas.find(idea => idea.id === selectedIdeaForCategory);
+      if (targetIdea?.dbId) {
+        try {
+          await ideaDB.updateIdea(targetIdea.dbId, { category });
+          console.log(`✅ Updated category for idea ${targetIdea.dbId} to ${category}`);
+        } catch (error) {
+          console.error('❌ Failed to update category:', error);
+          Alert.alert('错误', '更新分类失败');
+        }
+      }
+    }
+    
+    setShowCategoryModal(false);
+    setSelectedIdeaForCategory(null);
+  };
+
+  // 处理新增想法
+  const handleEmptyInputSubmit = async () => {
+    if (!emptyInputValue.trim()) return;
+    
+    try {
+      // 确定最终的分类类型
+      const finalCategory = getFinalContentType(emptyInputValue, emptyInputCategory);
+      
+      // 保存到数据库
+      const newIdea: NewIdea = {
+        hint: emptyInputValue.trim(),
+        detail: '',
+        date: currentDateString,
+        category: finalCategory,
+      };
+      
+      const dbId = await ideaDB.addIdea(newIdea);
+      
+      // 创建新的想法项目
+      const newIdeaItem: IdeaItem = {
+        id: Date.now().toString(),
+        text: emptyInputValue.trim(),
+        dbId: dbId,
+        manualCategory: emptyInputCategory,
+        isEditing: false,
+      };
+      
+      // 添加到列表
+      setIdeas(prev => [...prev, newIdeaItem]);
+      
+      // 清空输入框
+      setEmptyInputValue('');
+      setEmptyInputCategory(undefined);
+      
+      console.log(`💾 Created new idea with DB ID: ${dbId}`);
+      
+    } catch (error) {
+      console.error('❌ Failed to create idea:', error);
+      Alert.alert('错误', '创建想法失败');
+    }
+  };
+
+  const handleEmptyInputChange = (text: string) => {
+    setEmptyInputValue(text);
+  };
+
+  // 渲染想法项目
+  const renderIdeaItem = ({ item, index }: { item: IdeaItem; index: number }) => {
+    const isEditing = editingIdeaId === item.id;
+    
+    return (
+      <View style={styles.ideaContainer}>
+        <TouchableOpacity 
+          style={styles.iconContainer}
+          onPress={() => handleIconPress(item.id)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.contentIcon}>
+            {getContentIcon(item.text, item.manualCategory)}
+          </Text>
+        </TouchableOpacity>
+        
+        {isEditing ? (
+          <TextInput
+            ref={(ref) => {
+              inputRefs.current[item.id] = ref;
+            }}
+            style={styles.ideaInput}
+            value={item.text}
+            onChangeText={(text) => updateIdea(item.id, text)}
+            placeholder="记录你的想法..."
+            placeholderTextColor="#999"
+            multiline={false}
+            returnKeyType="done"
+            onSubmitEditing={() => finishEditingIdea(item.id)}
+            onBlur={() => {
+              // 延迟执行，给其他输入框获得焦点的时间
+              setTimeout(() => {
+                finishEditingIdea(item.id);
+              }, 150);
+            }}
+            onFocus={() => handleInputFocus(item.id, index)}
+            blurOnSubmit={false}
+            autoFocus
+          />
+        ) : (
+          <TouchableOpacity
+            style={styles.ideaTextContainer}
+            onPress={() => handleIdeaPress(item.id)}
+            activeOpacity={0.6}
+          >
+            <Text style={styles.ideaText}>{item.text}</Text>
+          </TouchableOpacity>
+        )}
+        
+        {__DEV__ && item.text.trim() && (
+          <Text style={styles.typeIndicator}>
+            {getContentTypeName(item.text, item.manualCategory)}
+          </Text>
+        )}
+      </View>
+    );
+  };
+
+  // 渲染空输入框项目
   const renderEmptyTextBox = () => (
     <View style={styles.ideaContainer}>
       <TouchableOpacity 
@@ -441,7 +492,7 @@ export default function Home() {
         returnKeyType="done"
         onChangeText={handleEmptyInputChange}
         onSubmitEditing={handleEmptyInputSubmit}
-        onBlur={handleEmptyInputBlur}
+        onFocus={() => handleInputFocus('empty', ideas.length)}
       />
       {__DEV__ && emptyInputValue.trim() && (
         <Text style={styles.typeIndicator}>
@@ -487,6 +538,11 @@ export default function Home() {
     </Modal>
   );
 
+  // 准备渲染的数据：现有ideas + 一个空的输入框
+  const renderData = React.useMemo(() => {
+    return [...ideas, { id: 'empty', text: emptyInputValue }];
+  }, [ideas, emptyInputValue]);
+
   if (isLoading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
@@ -494,9 +550,6 @@ export default function Home() {
       </View>
     );
   }
-
-  // 准备渲染的数据：现有ideas + 一个空的输入框
-  const renderData = [...ideas, { id: 'empty', text: '' }];
 
   return (
     <View style={styles.container}>
@@ -516,6 +569,9 @@ export default function Home() {
               📚{ideas.filter(i => getFinalContentType(i.text, i.manualCategory) === ContentType.LEARNING).length} | 
               📄{ideas.filter(i => getFinalContentType(i.text, i.manualCategory) === ContentType.NOTE).length}
             </Text>
+            <Text style={styles.debugText}>
+              编辑中: {editingIdeaId || '无'} | 键盘: {keyboardVisible ? `显示(${keyboardHeight}px)` : '隐藏'}
+            </Text>
           </View>
         )}
       </View>
@@ -524,7 +580,7 @@ export default function Home() {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 20}
       >
         <FlatList
           ref={flatListRef}
@@ -536,15 +592,20 @@ export default function Home() {
             return renderIdeaItem({ item: item as IdeaItem, index });
           }}
           keyExtractor={(item) => item.id}
-          style={[
-            styles.listContainer,
-          ]}
+          style={styles.listContainer}
           showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="none"
           contentContainerStyle={[
             styles.listContent,
-            { paddingBottom: 20 }
+            { paddingBottom: Math.max(20, keyboardHeight > 0 ? 20 : 20) }
           ]}
+          onScrollToIndexFailed={(info) => {
+            // 处理滚动失败的情况
+            console.log('滚动到索引失败:', info);
+          }}
+          scrollEventThrottle={16}
+          removeClippedSubviews={false}
         />
       </KeyboardAvoidingView>
 
@@ -691,5 +752,15 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     color: '#6c757d',
+  },
+  ideaTextContainer: {
+    flex: 1,
+    paddingVertical: 4,
+    justifyContent: 'center',
+  },
+  ideaText: {
+    fontSize: 16,
+    color: '#343a40',
+    lineHeight: 20,
   },
 });
