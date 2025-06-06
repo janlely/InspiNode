@@ -13,6 +13,7 @@ import {
   Pressable,
   Keyboard,
   KeyboardAvoidingView,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { ideaDB, NewIdea, UpdateIdea } from '../utils/IdeaDatabase';
 
@@ -67,14 +68,65 @@ export default function Home() {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [editingIdeaId, setEditingIdeaId] = useState<string | null>(null);
+  const [shouldSaveEmptyInput, setShouldSaveEmptyInput] = useState(false);
   
   const inputRefs = useRef<{ [key: string]: TextInput | null }>({});
   const emptyInputRef = useRef<TextInput | null>(null);
   const flatListRef = useRef<FlatList | null>(null);
+  const editingIdeaIdRef = useRef<string | null>(null);
+  const emptyInputValueRef = useRef<string>('');
+
+  // 保持 ref 与 state 同步
+  useEffect(() => {
+    editingIdeaIdRef.current = editingIdeaId;
+  }, [editingIdeaId]);
+
+  useEffect(() => {
+    emptyInputValueRef.current = emptyInputValue;
+  }, [emptyInputValue]);
+
+  // 监听shouldSaveEmptyInput标记，执行保存
+  useEffect(() => {
+    if (shouldSaveEmptyInput && emptyInputValue.trim()) {
+      console.log('🔄 Executing auto-save for new idea');
+      // 直接执行保存逻辑，避免调用函数可能导致的循环
+      const saveNewIdea = async () => {
+        try {
+          const finalCategory = getFinalContentType(emptyInputValue, emptyInputCategory);
+          const newIdea: NewIdea = {
+            hint: emptyInputValue.trim(),
+            detail: '',
+            date: currentDateString,
+            category: finalCategory,
+          };
+          
+          const dbId = await ideaDB.addIdea(newIdea);
+          
+          const newIdeaItem: IdeaItem = {
+            id: Date.now().toString(),
+            text: emptyInputValue.trim(),
+            dbId: dbId,
+            manualCategory: emptyInputCategory,
+          };
+          
+          setIdeas(prev => [...prev, newIdeaItem]);
+          setEmptyInputValue('');
+          setEmptyInputCategory(undefined);
+        } catch (error) {
+          console.error('❌ Failed to auto-save new idea:', error);
+        }
+      };
+      
+      saveNewIdea();
+      setShouldSaveEmptyInput(false);
+    }
+  }, [shouldSaveEmptyInput, emptyInputValue, emptyInputCategory, currentDateString]);
   
   useEffect(() => {
     initializeApp();
-    
+  }, []);
+
+  useEffect(() => {
     // 键盘事件监听
     const keyboardDidShowListener = Keyboard.addListener(
       'keyboardDidShow',
@@ -87,14 +139,30 @@ export default function Home() {
     const keyboardDidHideListener = Keyboard.addListener(
       'keyboardDidHide',
       () => {
+        const currentEditingId = editingIdeaIdRef.current;
+        console.log('⌨️ Keyboard hidden, editingIdeaId:', currentEditingId);
         setKeyboardHeight(0);
         setKeyboardVisible(false);
-        // 延迟清除编辑状态，给切换编辑目标留时间
+        // 延迟检查并保存编辑内容
         setTimeout(() => {
-          // 检查是否有输入框仍然聚焦，如果没有才清除编辑状态
-          const hasActiveInput = Object.values(inputRefs.current).some(ref => ref?.isFocused());
+          // 检查是否有输入框仍然聚焦，如果没有才保存并清除编辑状态
+          const hasActiveInput = Object.values(inputRefs.current).some(ref => ref?.isFocused()) || 
+                                emptyInputRef.current?.isFocused();
+          
           if (!hasActiveInput) {
-            setEditingIdeaId(null);
+            // 保存正在编辑的已有 idea
+            if (currentEditingId) {
+              console.log('💾 Auto-saving existing idea on keyboard hide for:', currentEditingId);
+              setEditingIdeaId(null);
+            }
+            
+            // 保存新增输入框的内容
+            const currentEmptyValue = emptyInputValueRef.current;
+            if (currentEmptyValue.trim()) {
+              console.log('💾 Auto-saving new idea on keyboard hide:', currentEmptyValue.trim());
+              // 设置标记来触发保存
+              setShouldSaveEmptyInput(true);
+            }
           }
         }, 200);
       }
@@ -214,30 +282,6 @@ export default function Home() {
     }, 100);
   };
 
-  // 处理输入框聚焦，执行自动滚动
-  const handleInputFocus = useCallback((inputId: string, index: number) => {
-    // 延迟执行滚动，等待键盘完全弹出
-    setTimeout(() => {
-      if (flatListRef.current && keyboardVisible && index > 2) {
-        try {
-          if (inputId === 'empty') {
-            // 最后一个输入框，滚动到底部
-            flatListRef.current.scrollToEnd({ animated: true });
-          } else {
-            // 其他输入框，滚动到指定位置
-            flatListRef.current.scrollToIndex({
-              index: index,
-              animated: true,
-              viewPosition: 0.25,
-            });
-          }
-        } catch (error) {
-          // 滚动失败时忽略错误
-        }
-      }
-    }, 300);
-  }, [keyboardVisible]);
-
   // 更新想法文本
   const updateIdea = async (id: string, text: string) => {
     setIdeas(prev => 
@@ -248,7 +292,7 @@ export default function Home() {
   };
 
   // 完成编辑（保存想法）
-  const finishEditingIdea = async (id: string) => {
+  const finishEditingIdea = useCallback(async (id: string) => {
     const idea = ideas.find(i => i.id === id);
     if (!idea) return;
     
@@ -301,7 +345,51 @@ export default function Home() {
       console.error('❌ Failed to save idea:', error);
       Alert.alert('错误', '保存想法失败');
     }
-  };
+  }, [ideas, currentDateString]);
+
+  // 处理点击屏幕空白区域
+  const handleScreenPress = useCallback(() => {
+    console.log('🖱️ Screen pressed, editingIdeaId:', editingIdeaId, 'emptyInputValue:', emptyInputValue.trim());
+    
+    // 如果有正在编辑的内容，保存并退出编辑模式
+    if (editingIdeaId) {
+      console.log('💾 Saving existing idea from screen press');
+      finishEditingIdea(editingIdeaId);
+    }
+    
+    // 如果新增输入框有内容，保存并插入新的 idea
+    if (emptyInputValue.trim()) {
+      console.log('💾 Saving new idea from screen press:', emptyInputValue.trim());
+      setShouldSaveEmptyInput(true);
+    }
+    
+    // 关闭键盘
+    Keyboard.dismiss();
+  }, [editingIdeaId, finishEditingIdea, emptyInputValue, setShouldSaveEmptyInput]);
+
+  // 处理输入框聚焦，执行自动滚动
+  const handleInputFocus = useCallback((inputId: string, index: number) => {
+    // 延迟执行滚动，等待键盘完全弹出
+    setTimeout(() => {
+      if (flatListRef.current && keyboardVisible && index > 2) {
+        try {
+          if (inputId === 'empty') {
+            // 最后一个输入框，滚动到底部
+            flatListRef.current.scrollToEnd({ animated: true });
+          } else {
+            // 其他输入框，滚动到指定位置
+            flatListRef.current.scrollToIndex({
+              index: index,
+              animated: true,
+              viewPosition: 0.25,
+            });
+          }
+        } catch (error) {
+          // 滚动失败时忽略错误
+        }
+      }
+    }, 300);
+  }, [keyboardVisible]);
 
   // 处理分类选择
   const handleIconPress = (ideaId: string) => {
@@ -417,9 +505,14 @@ export default function Home() {
             returnKeyType="done"
             onSubmitEditing={() => finishEditingIdea(item.id)}
             onBlur={() => {
+              console.log('🔀 TextInput onBlur triggered for:', item.id);
               // 延迟执行，给其他输入框获得焦点的时间
               setTimeout(() => {
-                finishEditingIdea(item.id);
+                // 检查是否仍在编辑状态，避免重复保存
+                if (editingIdeaId === item.id) {
+                  console.log('💾 Saving from onBlur for:', item.id);
+                  finishEditingIdea(item.id);
+                }
               }, 150);
             }}
             onFocus={() => handleInputFocus(item.id, index)}
@@ -519,50 +612,58 @@ export default function Home() {
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
-      
-      {/* 日期头部 */}
-      <View style={styles.header}>
-        <Text style={styles.dateText}>{currentDate}</Text>
+    <TouchableWithoutFeedback onPress={handleScreenPress}>
+      <View style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
+        
+        {/* 日期头部 */}
+        <View style={styles.header}>
+          <Text style={styles.dateText}>{currentDate}</Text>
 
-      </View>
+        </View>
 
-      {/* 想法列表 */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 20}
-      >
-        <FlatList
-          ref={flatListRef}
-          data={renderData}
-          renderItem={({ item, index }) => {
-            if (item.id === 'empty') {
-              return renderEmptyTextBox();
+        {/* 想法列表 */}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 20}
+        >
+          <FlatList
+            ref={flatListRef}
+            data={renderData}
+            renderItem={({ item, index }) => {
+              if (item.id === 'empty') {
+                return renderEmptyTextBox();
+              }
+              return renderIdeaItem({ item: item as IdeaItem, index });
+            }}
+            keyExtractor={(item) => item.id}
+            style={styles.listContainer}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="always"
+            keyboardDismissMode="none"
+            contentContainerStyle={[
+              styles.listContent,
+              { paddingBottom: 20 }
+            ]}
+            onScrollToIndexFailed={() => {
+              // 滚动失败时忽略
+            }}
+            scrollEventThrottle={16}
+            removeClippedSubviews={false}
+            ListFooterComponent={
+              <Pressable
+                style={{ height: 100, width: '100%' }}
+                onPress={handleScreenPress}
+              />
             }
-            return renderIdeaItem({ item: item as IdeaItem, index });
-          }}
-          keyExtractor={(item) => item.id}
-          style={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="always"
-          keyboardDismissMode="none"
-          contentContainerStyle={[
-            styles.listContent,
-            { paddingBottom: 20 }
-          ]}
-          onScrollToIndexFailed={() => {
-            // 滚动失败时忽略
-          }}
-          scrollEventThrottle={16}
-          removeClippedSubviews={false}
-        />
-      </KeyboardAvoidingView>
+          />
+        </KeyboardAvoidingView>
 
-      {/* 分类选择模态框 */}
-      {renderCategoryModal()}
-    </View>
+        {/* 分类选择模态框 */}
+        {renderCategoryModal()}
+      </View>
+    </TouchableWithoutFeedback>
   );
 }
 
