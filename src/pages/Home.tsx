@@ -662,22 +662,31 @@ export default function Home() {
         
               {/* 日期头部 */}
       <View style={styles.header}>
-        <View style={styles.dateRow}>
-          <Text style={styles.dateText}>{currentDate}</Text>
+        <View style={styles.headerRow}>
+          {/* 日历按钮 */}
           <TouchableOpacity 
             style={styles.calendarButton}
-            onPress={() => setShowCalendarModal(true)}
+            onPress={() => {
+              console.log('📅 Calendar button pressed, setting showCalendarModal to true');
+              setShowCalendarModal(true);
+            }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Text style={styles.calendarIcon}>📅</Text>
           </TouchableOpacity>
-        </View>
-        
-        {/* 分类统计 */}
-        <View style={styles.statsContainer}>
-          <Text style={styles.statsText}>
-            📝{categoryStats.todo} | 💡{categoryStats.idea} | 📚{categoryStats.learning} | 📄{categoryStats.note}
-          </Text>
+          
+          {/* 日期与统计信息的容器 */}
+          <View style={styles.centerContent}>
+            <Text style={styles.dateText}>{currentDate}</Text>
+            <View style={styles.statsContainer}>
+              <Text style={styles.statsText}>
+                📝{categoryStats.todo} | 💡{categoryStats.idea} | 📚{categoryStats.learning} | 📄{categoryStats.note}
+              </Text>
+            </View>
+          </View>
+          
+          {/* 右边占位符，保持日期居中 */}
+          <View style={styles.rightSpacer} />
         </View>
       </View>
 
@@ -723,10 +732,14 @@ export default function Home() {
         {renderCategoryModal()}
         
         {/* 日历模态框 */}
+        {console.log('📅 Home rendering SwipeableCalendar with visible:', showCalendarModal)}
         <SwipeableCalendar
           visible={showCalendarModal}
           currentDateString={currentDateString}
-          onClose={() => setShowCalendarModal(false)}
+          onClose={() => {
+            console.log('📅 Calendar close button pressed');
+            setShowCalendarModal(false);
+          }}
           onDateSelect={navigateToDate}
         />
       </View>
@@ -755,10 +768,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
   },
-  dateRow: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+  },
+  centerContent: {
+    alignItems: 'center',
+    position: 'absolute',
+    left: 0,
+    right: 0,
   },
   dateText: {
     fontSize: 18,
@@ -767,11 +786,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   calendarButton: {
-    marginLeft: 12,
-    padding: 4,
+    padding: 8,
   },
   calendarIcon: {
-    fontSize: 20,
+    fontSize: 32,
+    color: '#6c757d',
+  },
+  rightSpacer: {
+    width: 48, // 与calendarButton + padding相同的宽度
   },
   statsContainer: {
     marginTop: 8,
