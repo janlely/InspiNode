@@ -16,6 +16,7 @@ import {
   TouchableWithoutFeedback,
 } from 'react-native';
 import { ideaDB, NewIdea, UpdateIdea } from '../utils/IdeaDatabase';
+import SwipeableCalendar from '../components/SwipeableCalendar';
 
 interface IdeaItem {
   id: string;
@@ -65,6 +66,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [selectedIdeaForCategory, setSelectedIdeaForCategory] = useState<string | null>(null);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [editingIdeaId, setEditingIdeaId] = useState<string | null>(null);
@@ -265,6 +267,36 @@ export default function Home() {
     } catch (error) {
       console.error('❌ Failed to load ideas:', error);
       Alert.alert('错误', '加载想法失败');
+    }
+  };
+
+
+
+  // 跳转到指定日期
+  const navigateToDate = async (dateString: string) => {
+    try {
+      // 关闭日历模态框
+      setShowCalendarModal(false);
+      
+      // 更新当前日期字符串
+      setCurrentDateString(dateString);
+      
+      // 更新显示的日期
+      const date = new Date(dateString);
+      const options: Intl.DateTimeFormatOptions = {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'long'
+      };
+      setCurrentDate(date.toLocaleDateString('zh-CN', options));
+      
+      // 加载该日期的想法
+      await loadTodayIdeas(dateString);
+      
+    } catch (error) {
+      console.error('❌ Failed to navigate to date:', error);
+      Alert.alert('错误', '跳转日期失败');
     }
   };
 
@@ -598,10 +630,22 @@ export default function Home() {
     </Modal>
   );
 
+
+
   // 准备渲染的数据：现有ideas + 一个空的输入框
   const renderData = React.useMemo(() => {
     return [...ideas, { id: 'empty', text: emptyInputValue }];
   }, [ideas, emptyInputValue]);
+
+  // 计算分类统计
+  const categoryStats = React.useMemo(() => {
+    const todo = ideas.filter(i => getFinalContentType(i.text, i.manualCategory) === ContentType.TODO).length;
+    const idea = ideas.filter(i => getFinalContentType(i.text, i.manualCategory) === ContentType.IDEA).length;
+    const learning = ideas.filter(i => getFinalContentType(i.text, i.manualCategory) === ContentType.LEARNING).length;
+    const note = ideas.filter(i => getFinalContentType(i.text, i.manualCategory) === ContentType.NOTE).length;
+    
+    return { todo, idea, learning, note };
+  }, [ideas]);
 
   if (isLoading) {
     return (
@@ -616,11 +660,26 @@ export default function Home() {
       <View style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
         
-        {/* 日期头部 */}
-        <View style={styles.header}>
+              {/* 日期头部 */}
+      <View style={styles.header}>
+        <View style={styles.dateRow}>
           <Text style={styles.dateText}>{currentDate}</Text>
-
+          <TouchableOpacity 
+            style={styles.calendarButton}
+            onPress={() => setShowCalendarModal(true)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={styles.calendarIcon}>📅</Text>
+          </TouchableOpacity>
         </View>
+        
+        {/* 分类统计 */}
+        <View style={styles.statsContainer}>
+          <Text style={styles.statsText}>
+            📝{categoryStats.todo} | 💡{categoryStats.idea} | 📚{categoryStats.learning} | 📄{categoryStats.note}
+          </Text>
+        </View>
+      </View>
 
         {/* 想法列表 */}
         <KeyboardAvoidingView
@@ -662,6 +721,14 @@ export default function Home() {
 
         {/* 分类选择模态框 */}
         {renderCategoryModal()}
+        
+        {/* 日历模态框 */}
+        <SwipeableCalendar
+          visible={showCalendarModal}
+          currentDateString={currentDateString}
+          onClose={() => setShowCalendarModal(false)}
+          onDateSelect={navigateToDate}
+        />
       </View>
     </TouchableWithoutFeedback>
   );
@@ -688,13 +755,33 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
   },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   dateText: {
     fontSize: 18,
     fontWeight: '600',
     color: '#343a40',
     textAlign: 'center',
   },
-
+  calendarButton: {
+    marginLeft: 12,
+    padding: 4,
+  },
+  calendarIcon: {
+    fontSize: 20,
+  },
+  statsContainer: {
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  statsText: {
+    fontSize: 12,
+    color: '#6c757d',
+    textAlign: 'center',
+  },
   listContainer: {
     flex: 1,
   },
@@ -801,4 +888,5 @@ const styles = StyleSheet.create({
     color: '#343a40',
     lineHeight: 20,
   },
+
 });

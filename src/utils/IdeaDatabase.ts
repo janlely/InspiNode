@@ -33,7 +33,7 @@ class IdeaDatabase {
   private isInitialized = false;
   
   // 当前数据库版本
-  private static readonly CURRENT_VERSION = 2;
+  private static readonly CURRENT_VERSION = 3;
   
   // 数据库名称
   private static readonly DATABASE_NAME = 'InspiNoteApp.db';
@@ -131,6 +131,10 @@ class IdeaDatabase {
         await this.migrateToVersion2();
         break;
       
+      case 3:
+        await this.migrateToVersion3();
+        break;
+      
       default:
         console.warn(`⚠️ Unknown migration version: ${version}`);
     }
@@ -193,6 +197,40 @@ class IdeaDatabase {
     }
   }
 
+  // 迁移到版本3：添加格式化日期字段
+  private async migrateToVersion3(): Promise<void> {
+    console.log('📋 Adding formatted_date field for version 3...');
+    
+    const addFormattedDateColumn = `
+      ALTER TABLE ideas ADD COLUMN formatted_date TEXT DEFAULT NULL;
+    `;
+    
+    const createFormattedDateIndex = `
+      CREATE INDEX IF NOT EXISTS idx_ideas_formatted_date ON ideas(formatted_date);
+    `;
+    
+    try {
+      // 添加格式化日期字段
+      await this.db.executeSql(addFormattedDateColumn);
+      console.log('✅ Formatted_date column added successfully');
+      
+      // 为现有数据填充格式化日期
+      const updateFormattedDate = `
+        UPDATE ideas SET formatted_date = REPLACE(date, '-', '') WHERE formatted_date IS NULL;
+      `;
+      await this.db.executeSql(updateFormattedDate);
+      console.log('✅ Existing data updated with formatted dates');
+      
+      // 创建索引
+      await this.db.executeSql(createFormattedDateIndex);
+      console.log('✅ Formatted_date index created');
+      
+    } catch (error) {
+      console.error('❌ Error in version 3 migration:', error);
+      throw error;
+    }
+  }
+
   // 确保数据库已初始化
   private async ensureInitialized(): Promise<void> {
     if (!this.isInitialized) {
@@ -205,9 +243,11 @@ class IdeaDatabase {
     console.log('💡 Adding idea:', idea);
     await this.ensureInitialized();
 
+    const formattedDate = IdeaDatabase.formatDateToYYYYMMDD(idea.date);
+
     const insertQuery = `
-      INSERT INTO ideas (hint, detail, date, category)
-      VALUES (?, ?, ?, ?);
+      INSERT INTO ideas (hint, detail, date, category, formatted_date)
+      VALUES (?, ?, ?, ?, ?);
     `;
 
     try {
@@ -216,6 +256,7 @@ class IdeaDatabase {
         idea.detail || '',
         idea.date,
         idea.category || null,
+        formattedDate,
       ]);
       
       const insertId = result[0].insertId;
@@ -245,6 +286,8 @@ class IdeaDatabase {
     if (updates.date !== undefined) {
       fields.push('date = ?');
       values.push(updates.date);
+      fields.push('formatted_date = ?');
+      values.push(IdeaDatabase.formatDateToYYYYMMDD(updates.date));
     }
     if (updates.category !== undefined) {
       fields.push('category = ?');
@@ -317,6 +360,34 @@ class IdeaDatabase {
     } catch (error) {
       console.error('❌ Error fetching ideas by date:', error);
       throw new Error('加载想法失败');
+    }
+  }
+
+  // 获取指定月份的所有想法（优化版：使用格式化日期字段）
+  async getIdeasByMonth(year: number, month: number): Promise<IdeaRecord[]> {
+    await this.ensureInitialized();
+
+    const monthPrefix = `${year}${String(month).padStart(2, '0')}`;
+
+    const selectQuery = `
+      SELECT * FROM ideas 
+      WHERE formatted_date LIKE ? 
+      ORDER BY date ASC, created_at ASC;
+    `;
+
+    try {
+      const result = await this.db.executeSql(selectQuery, [`${monthPrefix}%`]);
+      const ideas: IdeaRecord[] = [];
+
+      for (let i = 0; i < result[0].rows.length; i++) {
+        ideas.push(result[0].rows.item(i));
+      }
+
+      console.log(`📅 Loaded ${ideas.length} ideas for month ${year}-${month} (optimized)`);
+      return ideas;
+    } catch (error) {
+      console.error('❌ Error fetching ideas by month:', error);
+      throw new Error('加载月份想法失败');
     }
   }
 
@@ -404,6 +475,80 @@ class IdeaDatabase {
     }
   }
 
+  // 获取所有有想法的日期
+  async getDatesWithIdeas(): Promise<string[]> {
+    await this.ensureInitialized();
+
+    try {
+      const result = await this.db.executeSql('SELECT DISTINCT date FROM ideas ORDER BY date DESC');
+      const dates: string[] = [];
+      
+      for (let i = 0; i < result[0].rows.length; i++) {
+        dates.push(result[0].rows.item(i).date);
+      }
+      
+      console.log(`📅 Found ${dates.length} dates with ideas`);
+      return dates;
+    } catch (error) {
+      console.error('❌ Error getting dates with ideas:', error);
+      throw new Error('获取有想法的日期失败');
+    }
+  }
+
+  // 获取指定月份有想法的日期（优化版：使用格式化日期字段）
+  async getDatesWithIdeasByMonth(year: number, month: number): Promise<string[]> {
+    await this.ensureInitialized();
+
+    const monthPrefix = `${year}${String(month).padStart(2, '0')}`;
+
+    try {
+      // 使用格式化日期字段进行快速查询
+      const result = await this.db.executeSql(
+        'SELECT DISTINCT date FROM ideas WHERE formatted_date LIKE ? ORDER BY date ASC',
+        [`${monthPrefix}%`]
+      );
+      const dates: string[] = [];
+      
+      for (let i = 0; i < result[0].rows.length; i++) {
+        dates.push(result[0].rows.item(i).date);
+      }
+      
+      console.log(`📅 Found ${dates.length} dates with ideas in ${year}-${month} (optimized query)`);
+      return dates;
+    } catch (error) {
+      console.error('❌ Error getting dates with ideas by month:', error);
+      
+      // 降级到旧的查询方法（兼容性）
+      return this.getDatesWithIdeasByMonthFallback(year, month);
+    }
+  }
+
+  // 降级查询方法（兼容性）
+  private async getDatesWithIdeasByMonthFallback(year: number, month: number): Promise<string[]> {
+    console.log('🔄 Using fallback query method...');
+    
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
+
+    try {
+      const result = await this.db.executeSql(
+        'SELECT DISTINCT date FROM ideas WHERE date >= ? AND date <= ? ORDER BY date ASC',
+        [startDate, endDate]
+      );
+      const dates: string[] = [];
+      
+      for (let i = 0; i < result[0].rows.length; i++) {
+        dates.push(result[0].rows.item(i).date);
+      }
+      
+      console.log(`📅 Found ${dates.length} dates with ideas in ${year}-${month} (fallback)`);
+      return dates;
+    } catch (error) {
+      console.error('❌ Error in fallback query:', error);
+      throw new Error('获取月份想法日期失败');
+    }
+  }
+
   // 批量删除空想法
   async cleanupEmptyIdeas(): Promise<number> {
     await this.ensureInitialized();
@@ -475,6 +620,11 @@ class IdeaDatabase {
       weekday: 'long'
     };
     return date.toLocaleDateString('zh-CN', options);
+  }
+
+  // 生成格式化日期 (YYYYMMDD)
+  static formatDateToYYYYMMDD(dateString: string): string {
+    return dateString.replace(/-/g, '');
   }
 }
 
