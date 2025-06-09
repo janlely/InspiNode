@@ -23,6 +23,7 @@ interface IdeaItem {
   text: string;
   dbId?: number; // 数据库中的真实ID
   manualCategory?: string; // 手动选择的分类
+  completed?: boolean; // 完成状态
 }
 
 // 内容分类枚举
@@ -100,6 +101,7 @@ export default function Home() {
             detail: '',
             date: currentDateString,
             category: finalCategory,
+            completed: false, // 新建的TODO默认未完成
           };
           
           const dbId = await ideaDB.addIdea(newIdea);
@@ -109,6 +111,7 @@ export default function Home() {
             text: emptyInputValue.trim(),
             dbId: dbId,
             manualCategory: emptyInputCategory,
+            completed: false, // 新建的TODO默认未完成
           };
           
           setIdeas(prev => [...prev, newIdeaItem]);
@@ -261,6 +264,7 @@ export default function Home() {
         text: dbIdea.hint,
         dbId: dbIdea.id,
         manualCategory: dbIdea.category || undefined,
+        completed: !!dbIdea.completed, // 转换为boolean类型
       }));
       
       setIdeas(formattedIdeas);
@@ -351,6 +355,7 @@ export default function Home() {
         const updatedRecord: UpdateIdea = {
           hint: idea.text.trim(),
           category: getFinalContentType(idea.text, idea.manualCategory),
+          completed: idea.completed,
         };
         
         await ideaDB.updateIdea(idea.dbId, updatedRecord);
@@ -361,6 +366,7 @@ export default function Home() {
           detail: '',
           date: currentDateString,
           category: getFinalContentType(idea.text, idea.manualCategory),
+          completed: idea.completed || false,
         };
         
         const dbId = await ideaDB.addIdea(newIdea);
@@ -434,6 +440,38 @@ export default function Home() {
     setShowCategoryModal(true);
   };
 
+  // 处理TODO完成状态切换
+  const handleTodoToggle = async (ideaId: string) => {
+    const idea = ideas.find(i => i.id === ideaId);
+    if (!idea) return;
+    
+    const newCompletedState = !idea.completed;
+    
+    // 更新本地状态
+    setIdeas(prev => 
+      prev.map(i => 
+        i.id === ideaId ? { ...i, completed: newCompletedState } : i
+      )
+    );
+    
+    // 如果这个idea已经保存到数据库，更新数据库中的完成状态
+    if (idea.dbId) {
+      try {
+        await ideaDB.updateIdea(idea.dbId, { completed: newCompletedState });
+        console.log(`✅ TODO ${ideaId} marked as ${newCompletedState ? 'completed' : 'incomplete'}`);
+      } catch (error) {
+        console.error('❌ Failed to update TODO status:', error);
+        Alert.alert('错误', '更新待办状态失败');
+        // 回滚本地状态
+        setIdeas(prev => 
+          prev.map(i => 
+            i.id === ideaId ? { ...i, completed: !newCompletedState } : i
+          )
+        );
+      }
+    }
+  };
+
   const handleCategorySelect = async (category: ContentType) => {
     if (selectedIdeaForCategory === 'empty') {
       setEmptyInputCategory(category);
@@ -477,6 +515,7 @@ export default function Home() {
         detail: '',
         date: currentDateString,
         category: finalCategory,
+        completed: false, // 新建的TODO默认未完成
       };
       
       const dbId = await ideaDB.addIdea(newIdea);
@@ -487,6 +526,7 @@ export default function Home() {
         text: emptyInputValue.trim(),
         dbId: dbId,
         manualCategory: emptyInputCategory,
+        completed: false, // 新建的TODO默认未完成
       };
       
       // 添加到列表
@@ -509,6 +549,7 @@ export default function Home() {
   // 渲染想法项目
   const renderIdeaItem = ({ item, index }: { item: IdeaItem; index: number }) => {
     const isEditing = editingIdeaId === item.id;
+    const isTodo = getFinalContentType(item.text, item.manualCategory) === ContentType.TODO;
     
     return (
       <View style={styles.ideaContainer}>
@@ -528,7 +569,7 @@ export default function Home() {
             ref={(ref) => {
               inputRefs.current[item.id] = ref;
             }}
-            style={styles.ideaInput}
+            style={[styles.ideaInput, item.completed && isTodo && styles.completedIdeaInput]}
             value={item.text}
             onChangeText={(text) => updateIdea(item.id, text)}
             placeholder="记录你的想法..."
@@ -557,11 +598,26 @@ export default function Home() {
             onPress={() => handleIdeaPress(item.id)}
             activeOpacity={0.6}
           >
-            <Text style={styles.ideaText}>{item.text}</Text>
+            <Text style={[styles.ideaText, item.completed && isTodo && styles.completedIdeaText]}>
+              {item.text}
+            </Text>
           </TouchableOpacity>
         )}
         
-
+        {/* 只有TODO类型才显示复选框 */}
+        {isTodo && (
+          <TouchableOpacity
+            style={styles.checkboxContainer}
+            onPress={() => handleTodoToggle(item.id)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <View style={[styles.checkbox, item.completed && styles.checkboxChecked]}>
+              {item.completed && (
+                <Text style={styles.checkmark}>✓</Text>
+              )}
+            </View>
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
@@ -639,12 +695,14 @@ export default function Home() {
 
   // 计算分类统计
   const categoryStats = React.useMemo(() => {
-    const todo = ideas.filter(i => getFinalContentType(i.text, i.manualCategory) === ContentType.TODO).length;
+    const todoItems = ideas.filter(i => getFinalContentType(i.text, i.manualCategory) === ContentType.TODO);
+    const todoCompleted = todoItems.filter(i => i.completed).length;
+    const todoTotal = todoItems.length;
     const idea = ideas.filter(i => getFinalContentType(i.text, i.manualCategory) === ContentType.IDEA).length;
     const learning = ideas.filter(i => getFinalContentType(i.text, i.manualCategory) === ContentType.LEARNING).length;
     const note = ideas.filter(i => getFinalContentType(i.text, i.manualCategory) === ContentType.NOTE).length;
     
-    return { todo, idea, learning, note };
+    return { todo: todoTotal, todoCompleted, idea, learning, note };
   }, [ideas]);
 
   if (isLoading) {
@@ -680,7 +738,7 @@ export default function Home() {
             <Text style={styles.dateText}>{currentDate}</Text>
             <View style={styles.statsContainer}>
               <Text style={styles.statsText}>
-                📝{categoryStats.todo} | 💡{categoryStats.idea} | 📚{categoryStats.learning} | 📄{categoryStats.note}
+                📝{categoryStats.todoCompleted}/{categoryStats.todo} | 💡{categoryStats.idea} | 📚{categoryStats.learning} | 📄{categoryStats.note}
               </Text>
             </View>
           </View>
@@ -909,6 +967,41 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#343a40',
     lineHeight: 20,
+  },
+  // 复选框相关样式
+  checkboxContainer: {
+    marginLeft: 12,
+    padding: 4,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#dee2e6',
+    backgroundColor: '#ffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: '#28a745',
+    borderColor: '#28a745',
+  },
+  checkmark: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  // 完成状态的文本样式
+  completedIdeaText: {
+    textDecorationLine: 'line-through',
+    color: '#6c757d',
+    opacity: 0.7,
+  },
+  completedIdeaInput: {
+    textDecorationLine: 'line-through',
+    color: '#6c757d',
+    opacity: 0.7,
   },
 
 });

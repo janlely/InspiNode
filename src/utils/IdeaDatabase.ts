@@ -10,6 +10,7 @@ export interface IdeaRecord {
   detail: string;
   date: string;
   category?: string;
+  completed?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -19,6 +20,7 @@ export interface NewIdea {
   detail?: string;
   date: string;
   category?: string;
+  completed?: boolean;
 }
 
 export interface UpdateIdea {
@@ -26,6 +28,7 @@ export interface UpdateIdea {
   detail?: string;
   date?: string;
   category?: string;
+  completed?: boolean;
 }
 
 class IdeaDatabase {
@@ -33,7 +36,7 @@ class IdeaDatabase {
   private isInitialized = false;
   
   // 当前数据库版本
-  private static readonly CURRENT_VERSION = 3;
+  private static readonly CURRENT_VERSION = 4;
   
   // 数据库名称
   private static readonly DATABASE_NAME = 'InspiNoteApp.db';
@@ -135,6 +138,10 @@ class IdeaDatabase {
         await this.migrateToVersion3();
         break;
       
+      case 4:
+        await this.migrateToVersion4();
+        break;
+      
       default:
         console.warn(`⚠️ Unknown migration version: ${version}`);
     }
@@ -231,6 +238,23 @@ class IdeaDatabase {
     }
   }
 
+  // 迁移到版本4：添加完成状态字段
+  private async migrateToVersion4(): Promise<void> {
+    console.log('📋 Adding completed field for version 4...');
+    
+    const addCompletedColumn = `
+      ALTER TABLE ideas ADD COLUMN completed INTEGER DEFAULT 0;
+    `;
+    
+    try {
+      await this.db.executeSql(addCompletedColumn);
+      console.log('✅ Completed column added successfully');
+    } catch (error) {
+      console.error('❌ Error in version 4 migration:', error);
+      throw error;
+    }
+  }
+
   // 确保数据库已初始化
   private async ensureInitialized(): Promise<void> {
     if (!this.isInitialized) {
@@ -246,8 +270,8 @@ class IdeaDatabase {
     const formattedDate = IdeaDatabase.formatDateToYYYYMMDD(idea.date);
 
     const insertQuery = `
-      INSERT INTO ideas (hint, detail, date, category, formatted_date)
-      VALUES (?, ?, ?, ?, ?);
+      INSERT INTO ideas (hint, detail, date, category, formatted_date, completed)
+      VALUES (?, ?, ?, ?, ?, ?);
     `;
 
     try {
@@ -257,6 +281,7 @@ class IdeaDatabase {
         idea.date,
         idea.category || null,
         formattedDate,
+        idea.completed ? 1 : 0,
       ]);
       
       const insertId = result[0].insertId;
@@ -292,6 +317,10 @@ class IdeaDatabase {
     if (updates.category !== undefined) {
       fields.push('category = ?');
       values.push(updates.category);
+    }
+    if (updates.completed !== undefined) {
+      fields.push('completed = ?');
+      values.push(updates.completed ? 1 : 0);
     }
 
     if (fields.length === 0) return;
