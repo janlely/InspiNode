@@ -219,12 +219,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    minHeight: 60, // 设置最小高度确保垂直居中
   },
   centerContent: {
     alignItems: 'center',
-    position: 'absolute',
-    left: 0,
-    right: 0,
+    flex: 1,
+    paddingHorizontal: 16, // 为左右按钮留出空间
   },
   dateText: {
     fontSize: 18,
@@ -233,14 +233,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   calendarButton: {
-    padding: 8,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   calendarIcon: {
-    fontSize: 32,
+    fontSize: 36,
     color: '#6c757d',
-  },
-  rightSpacer: {
-    width: 48, // 与calendarButton + padding相同的宽度
   },
   statsContainer: {
     marginTop: 8,
@@ -252,10 +253,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   searchButton: {
-    padding: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   searchIcon: {
-    fontSize: 32,
+    fontSize: 28,
     color: '#6c757d',
   },
 });
