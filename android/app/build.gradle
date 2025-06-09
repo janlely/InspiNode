@@ -77,9 +77,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.inspinoteapp"
+    namespace "com.inspinote"
     defaultConfig {
-        applicationId "com.inspinoteapp"
+        applicationId "com.inspinote"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

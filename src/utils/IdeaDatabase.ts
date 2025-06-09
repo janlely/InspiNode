@@ -39,7 +39,7 @@ class IdeaDatabase {
   private static readonly CURRENT_VERSION = 4;
   
   // 数据库名称
-  private static readonly DATABASE_NAME = 'InspiNoteApp.db';
+  private static readonly DATABASE_NAME = 'InspiNote.db';
 
   // 初始化数据库
   async initialize(): Promise<void> {

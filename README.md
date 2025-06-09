@@ -54,8 +54,8 @@
 ### 1. 克隆项目
 
 ```bash
-git clone https://github.com/your-username/InspiNoteApp.git
-cd InspiNoteApp
+git clone https://github.com/your-username/InspiNote.git
+cd InspiNote
 ```
 
 ### 2. 安装依赖
@@ -234,7 +234,7 @@ cd android
 ```
 
 ### iOS
-1. 在 Xcode 中打开 `ios/InspiNoteApp.xcworkspace`
+1. 在 Xcode 中打开 `ios/InspiNote.xcworkspace`
 2. 选择 Release 配置
 3. Archive 构建
 
@@ -272,8 +272,8 @@ cd android
 
 ### 获取帮助
 
-- 🐛 **Bug 报告**: [Issues](https://github.com/your-username/InspiNoteApp/issues)
-- 💬 **功能建议**: [Discussions](https://github.com/your-username/InspiNoteApp/discussions)
+- 🐛 **Bug 报告**: [Issues](https://github.com/your-username/InspiNote/issues)
+- 💬 **功能建议**: [Discussions](https://github.com/your-username/InspiNote/discussions)
 - 📧 **联系方式**: your-email@example.com
 
 ## 🔄 最近更新
