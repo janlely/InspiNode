@@ -20,7 +20,6 @@ const App = () => {
     const locales = RNLocalize.getLocales();
     if (Array.isArray(locales)) {
       const deviceLanguage = locales[0].languageCode;
-      console.log('deviceLanguage: ', deviceLanguage);
       setLanguage(deviceLanguage);
       i18n.changeLanguage(deviceLanguage);
     }
@@ -51,6 +50,6 @@ const App = () => {
 
 export default App;
 function setLanguage(deviceLanguage: string) {
-  console.log('setLanguage: ', deviceLanguage);
+  // 设置语言逻辑（如果需要额外处理可在此添加）
 }
 

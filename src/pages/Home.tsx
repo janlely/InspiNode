@@ -7,7 +7,6 @@ import {
   Platform,
   Alert,
   TouchableOpacity,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -131,8 +130,7 @@ export default function Home() {
   }
 
   return (
-    <TouchableWithoutFeedback onPress={() => {}}>
-      <View style={styles.container}>
+    <View style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
         
         {/* 日期头部 */}
@@ -141,10 +139,7 @@ export default function Home() {
             {/* 日历按钮 */}
             <TouchableOpacity 
               style={styles.calendarButton}
-              onPress={() => {
-                console.log('📅 Calendar button pressed, setting showCalendarModal to true');
-                setShowCalendarModal(true);
-              }}
+              onPress={() => setShowCalendarModal(true)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Text style={styles.calendarIcon}>📅</Text>
@@ -183,14 +178,10 @@ export default function Home() {
         <SwipeableCalendar
           visible={showCalendarModal}
           currentDateString={currentDateString}
-          onClose={() => {
-            console.log('📅 Calendar close button pressed');
-            setShowCalendarModal(false);
-          }}
+          onClose={() => setShowCalendarModal(false)}
           onDateSelect={navigateToDate}
         />
       </View>
-    </TouchableWithoutFeedback>
   );
 }
 

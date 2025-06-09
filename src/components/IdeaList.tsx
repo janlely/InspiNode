@@ -72,7 +72,6 @@ export const IdeaList: React.FC<IdeaListProps> = ({
   // 监听shouldSaveEmptyInput标记，执行保存
   useEffect(() => {
     if (shouldSaveEmptyInput && emptyInputValue.trim()) {
-      console.log('🔄 Executing auto-save for new idea');
       const saveNewIdea = async () => {
         try {
           const finalCategory = getFinalContentType(emptyInputValue, emptyInputCategory);
@@ -281,7 +280,6 @@ export const IdeaList: React.FC<IdeaListProps> = ({
     if (idea.dbId) {
       try {
         await ideaDB.updateIdea(idea.dbId, { completed: newCompletedState });
-        console.log(`✅ TODO ${ideaId} marked as ${newCompletedState ? 'completed' : 'incomplete'}`);
       } catch (error) {
         console.error('❌ Failed to update TODO status:', error);
         Alert.alert('错误', '更新待办状态失败');

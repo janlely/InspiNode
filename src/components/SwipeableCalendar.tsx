@@ -50,9 +50,7 @@ const SwipeableCalendar: React.FC<SwipeableCalendarProps> = ({
   // 加载指定月份的想法日期
   const loadMonthIdeas = useCallback(async (year: number, month: number) => {
     try {
-      console.log(`📅 Starting DB query for ${year}-${month}`);
       const dates = await ideaDB.getDatesWithIdeasByMonth(year, month);
-      console.log(`📅 DB query result for ${year}-${month}:`, dates.length, 'dates');
       const monthKey = `${year}-${month}`;
       setDatesWithIdeas(prev => ({
         ...prev,
@@ -72,7 +70,6 @@ const SwipeableCalendar: React.FC<SwipeableCalendarProps> = ({
   // 初始化时加载当前月份数据
   useEffect(() => {
     if (visible) {
-      console.log('📅 Calendar opened, loading current month');
       const today = new Date(currentDateString);
       const currentYear = today.getFullYear();
       const currentMonth = today.getMonth() + 1;
@@ -90,8 +87,6 @@ const SwipeableCalendar: React.FC<SwipeableCalendarProps> = ({
   const onMonthChange = useCallback((month: DateData) => {
     const year = month.year;
     const monthNum = month.month;
-    
-    console.log(`📅 Month changed to: ${year}-${monthNum}`);
     
     if (!isMonthLoaded(year, monthNum)) {
       setIsLoading(true);
@@ -148,22 +143,15 @@ const SwipeableCalendar: React.FC<SwipeableCalendarProps> = ({
     
     // 检查是否为未来日期
     if (selectedDate > todayString) {
-      console.log('📅 Future date clicked, ignoring:', selectedDate);
       return; // 不允许选择未来日期
     }
     
-    console.log('📅 Date selected:', day.dateString);
     onDateSelect(day.dateString);
   }, [onDateSelect]);
 
-  console.log('📅 SwipeableCalendar render - visible:', visible, 'isLoading:', isLoading);
-  
   if (!visible) {
-    console.log('📅 Calendar not visible, returning null');
     return null;
   }
-
-  console.log('📅 Calendar should be visible, rendering Modal');
 
   // 使用绝对定位的View替代Modal
   return (

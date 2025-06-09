@@ -55,7 +55,6 @@ class IdeaDatabase {
       await this.checkAndMigrate();
       
       this.isInitialized = true;
-      console.log('📦 Database initialized successfully');
     } catch (error) {
       console.error('❌ Database initialization failed:', error);
       throw new Error('数据库初始化失败');
@@ -69,17 +68,12 @@ class IdeaDatabase {
     try {
       // 获取当前数据库版本
       const currentVersion = await this.getDatabaseVersion();
-      console.log(`📊 Current database version: ${currentVersion}, Target version: ${IdeaDatabase.CURRENT_VERSION}`);
 
       if (currentVersion < IdeaDatabase.CURRENT_VERSION) {
-        console.log('🔄 Database migration needed...');
         await this.performMigration(currentVersion, IdeaDatabase.CURRENT_VERSION);
         
         // 更新数据库版本
         await this.setDatabaseVersion(IdeaDatabase.CURRENT_VERSION);
-        console.log('✅ Database migration completed successfully');
-      } else {
-        console.log('✅ Database is up to date');
       }
     } catch (error) {
       console.error('❌ Database migration failed:', error);
@@ -262,9 +256,17 @@ class IdeaDatabase {
     }
   }
 
+  // 解析查询结果的辅助方法
+  private parseQueryResult(result: any): IdeaRecord[] {
+    const ideas: IdeaRecord[] = [];
+    for (let i = 0; i < result[0].rows.length; i++) {
+      ideas.push(result[0].rows.item(i));
+    }
+    return ideas;
+  }
+
   // 插入新想法
   async addIdea(idea: NewIdea): Promise<number> {
-    console.log('💡 Adding idea:', idea);
     await this.ensureInitialized();
 
     const formattedDate = IdeaDatabase.formatDateToYYYYMMDD(idea.date);
@@ -285,7 +287,6 @@ class IdeaDatabase {
       ]);
       
       const insertId = result[0].insertId;
-      console.log('💡 New idea added with ID:', insertId);
       return insertId;
     } catch (error) {
       console.error('❌ Error adding idea:', error);
@@ -338,8 +339,6 @@ class IdeaDatabase {
       const result = await this.db.executeSql(updateQuery, values);
       if (result[0].rowsAffected === 0) {
         console.warn('⚠️ No idea found with ID:', id);
-      } else {
-        console.log('✏️ Idea updated successfully:', id);
       }
     } catch (error) {
       console.error('❌ Error updating idea:', error);
@@ -357,8 +356,6 @@ class IdeaDatabase {
       const result = await this.db.executeSql(deleteQuery, [id]);
       if (result[0].rowsAffected === 0) {
         console.warn('⚠️ No idea found with ID:', id);
-      } else {
-        console.log('🗑️ Idea deleted successfully:', id);
       }
     } catch (error) {
       console.error('❌ Error deleting idea:', error);
@@ -378,14 +375,7 @@ class IdeaDatabase {
 
     try {
       const result = await this.db.executeSql(selectQuery, [date]);
-      const ideas: IdeaRecord[] = [];
-
-      for (let i = 0; i < result[0].rows.length; i++) {
-        ideas.push(result[0].rows.item(i));
-      }
-
-      console.log(`📅 Loaded ${ideas.length} ideas for date:`, date);
-      return ideas;
+      return this.parseQueryResult(result);
     } catch (error) {
       console.error('❌ Error fetching ideas by date:', error);
       throw new Error('加载想法失败');
@@ -406,14 +396,7 @@ class IdeaDatabase {
 
     try {
       const result = await this.db.executeSql(selectQuery, [`${monthPrefix}%`]);
-      const ideas: IdeaRecord[] = [];
-
-      for (let i = 0; i < result[0].rows.length; i++) {
-        ideas.push(result[0].rows.item(i));
-      }
-
-      console.log(`📅 Loaded ${ideas.length} ideas for month ${year}-${month} (optimized)`);
-      return ideas;
+      return this.parseQueryResult(result);
     } catch (error) {
       console.error('❌ Error fetching ideas by month:', error);
       throw new Error('加载月份想法失败');
@@ -431,14 +414,7 @@ class IdeaDatabase {
 
     try {
       const result = await this.db.executeSql(selectQuery);
-      const ideas: IdeaRecord[] = [];
-
-      for (let i = 0; i < result[0].rows.length; i++) {
-        ideas.push(result[0].rows.item(i));
-      }
-
-      console.log(`📚 Loaded ${ideas.length} total ideas`);
-      return ideas;
+      return this.parseQueryResult(result);
     } catch (error) {
       console.error('❌ Error fetching all ideas:', error);
       throw new Error('加载所有想法失败');
@@ -459,14 +435,7 @@ class IdeaDatabase {
 
     try {
       const result = await this.db.executeSql(searchQuery, [searchTerm, searchTerm]);
-      const ideas: IdeaRecord[] = [];
-
-      for (let i = 0; i < result[0].rows.length; i++) {
-        ideas.push(result[0].rows.item(i));
-      }
-
-      console.log(`🔍 Found ${ideas.length} ideas matching:`, keyword);
-      return ideas;
+      return this.parseQueryResult(result);
     } catch (error) {
       console.error('❌ Error searching ideas:', error);
       throw new Error('搜索想法失败');
@@ -496,7 +465,6 @@ class IdeaDatabase {
       const weekCount = weekResult[0].rows.item(0).count;
 
       const stats = { total, today: todayCount, thisWeek: weekCount };
-      console.log('📊 Ideas stats:', stats);
       return stats;
     } catch (error) {
       console.error('❌ Error fetching stats:', error);
@@ -516,7 +484,6 @@ class IdeaDatabase {
         dates.push(result[0].rows.item(i).date);
       }
       
-      console.log(`📅 Found ${dates.length} dates with ideas`);
       return dates;
     } catch (error) {
       console.error('❌ Error getting dates with ideas:', error);
