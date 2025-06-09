@@ -169,75 +169,14 @@ export default function Search() {
   const handleKeywordChange = (text: string) => {
     setFilters(prev => {
       const newFilters = { ...prev, keyword: text };
-      // 实时搜索，延迟300ms避免频繁请求
-      clearTimeout(searchTimeoutRef.current);
-      searchTimeoutRef.current = setTimeout(() => {
-        performQuietSearch(newFilters);
-      }, 300);
+      performSearch(newFilters);
       return newFilters;
     });
   };
 
-  // 静默搜索（不显示loading状态，避免页面闪动）
-  const performQuietSearch = async (searchFilters: FilterCriteria) => {
-    try {
-      let allIdeas = await ideaDB.getAllIdeas();
-      
-      // 转换为IdeaItem格式
-      let results: IdeaItem[] = allIdeas.map((dbIdea) => ({
-        id: dbIdea.id.toString(),
-        text: dbIdea.hint,
-        dbId: dbIdea.id,
-        manualCategory: dbIdea.category || undefined,
-        completed: !!dbIdea.completed,
-      }));
 
-      // 应用关键词筛选
-      if (searchFilters.keyword.trim()) {
-        const keyword = searchFilters.keyword.toLowerCase();
-        results = results.filter(idea => 
-          idea.text.toLowerCase().includes(keyword)
-        );
-      }
 
-      // 应用分类筛选
-      if (searchFilters.categories.length > 0) {
-        results = results.filter(idea => {
-          const ideaType = getFinalContentType(idea.text, idea.manualCategory);
-          return searchFilters.categories.includes(ideaType);
-        });
-      }
 
-      // 应用完成状态筛选（仅对TODO类型）
-      if (searchFilters.completedFilter !== 'all') {
-        results = results.filter(idea => {
-          const ideaType = getFinalContentType(idea.text, idea.manualCategory);
-          if (ideaType !== ContentType.TODO) return true;
-          
-          if (searchFilters.completedFilter === 'completed') {
-            return idea.completed === true;
-          } else {
-            return idea.completed !== true;
-          }
-        });
-      }
-
-      // 按创建时间倒序排列
-      const sortedResults = results.sort((a, b) => {
-        const aDbIdea = allIdeas.find(db => db.id === a.dbId);
-        const bDbIdea = allIdeas.find(db => db.id === b.dbId);
-        if (!aDbIdea || !bDbIdea) return 0;
-        return new Date(bDbIdea.created_at).getTime() - new Date(aDbIdea.created_at).getTime();
-      });
-      
-      setFilteredIdeas(sortedResults);
-    } catch (error) {
-      console.error('❌ Failed to search ideas:', error);
-    }
-  };
-
-  // 搜索超时引用
-  const searchTimeoutRef = React.useRef<NodeJS.Timeout>();
 
   // 打开筛选模态框
   const openFilterModal = () => {
@@ -308,7 +247,6 @@ export default function Search() {
   // 计算当前筛选条件的数量
   const getActiveFilterCount = () => {
     let count = 0;
-    if (filters.keyword.trim()) count++;
     if (filters.categories.length > 0) count++;
     if (filters.dateFilterType !== 'all') count++;
     if (filters.completedFilter !== 'all') count++;
@@ -611,22 +549,7 @@ export default function Search() {
         {getActiveFilterCount() > 0 && (
           <View style={styles.activeFiltersContainer}>
             <View style={styles.activeFiltersContent}>
-            {/* 关键词筛选 */}
-            {filters.keyword.trim() && (
-              <View style={styles.activeFilterTag}>
-                <Text style={styles.activeFilterText}>关键词: "{filters.keyword}"</Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    const newFilters = { ...filters, keyword: '' };
-                    setFilters(newFilters);
-                    performQuietSearch(newFilters);
-                  }}
-                  style={styles.removeFilterButton}
-                >
-                  <Text style={styles.removeFilterText}>×</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+
             
             {/* 类型筛选 */}
             {filters.categories.length > 0 && (
@@ -638,7 +561,7 @@ export default function Search() {
                   onPress={() => {
                     const newFilters = { ...filters, categories: [], completedFilter: 'all' as const };
                     setFilters(newFilters);
-                    performQuietSearch(newFilters);
+                    performSearch(newFilters);
                   }}
                   style={styles.removeFilterButton}
                 >
@@ -657,7 +580,7 @@ export default function Search() {
                   onPress={() => {
                     const newFilters = { ...filters, dateFilterType: 'all' as const, customDateRange: null };
                     setFilters(newFilters);
-                    performQuietSearch(newFilters);
+                    performSearch(newFilters);
                   }}
                   style={styles.removeFilterButton}
                 >
@@ -676,7 +599,7 @@ export default function Search() {
                   onPress={() => {
                     const newFilters = { ...filters, completedFilter: 'all' as const };
                     setFilters(newFilters);
-                    performQuietSearch(newFilters);
+                    performSearch(newFilters);
                   }}
                   style={styles.removeFilterButton}
                 >
@@ -689,14 +612,14 @@ export default function Search() {
             <TouchableOpacity
               onPress={() => {
                 const newFilters = {
-                  keyword: '',
+                  keyword: filters.keyword, // 保留当前的关键词
                   categories: [],
                   dateFilterType: 'all' as const,
                   customDateRange: null,
                   completedFilter: 'all' as const,
                 };
                 setFilters(newFilters);
-                performQuietSearch(newFilters);
+                performSearch(newFilters);
               }}
               style={styles.clearAllFiltersButton}
             >
