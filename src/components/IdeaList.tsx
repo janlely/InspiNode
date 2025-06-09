@@ -14,6 +14,7 @@ import {
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
 } from 'react-native';
+import Icon from '@react-native-vector-icons/fontawesome';
 import { ideaDB, NewIdea, UpdateIdea } from '../utils/IdeaDatabase';
 import { ContentType } from '../Types';
 import { 
@@ -37,6 +38,7 @@ interface IdeaListProps {
   currentDateString: string;
   showEmptyInput?: boolean; // 是否显示空输入框
   onScreenPress?: () => void; // 点击屏幕空白区域的回调
+  navigation?: any; // 导航对象，用于跳转到BlockEditor
 }
 
 export const IdeaList: React.FC<IdeaListProps> = ({
@@ -45,6 +47,7 @@ export const IdeaList: React.FC<IdeaListProps> = ({
   currentDateString,
   showEmptyInput = true,
   onScreenPress,
+  navigation,
 }) => {
   const [emptyInputValue, setEmptyInputValue] = useState('');
   const [emptyInputCategory, setEmptyInputCategory] = useState<string | undefined>(undefined);
@@ -412,6 +415,18 @@ export const IdeaList: React.FC<IdeaListProps> = ({
           </TouchableOpacity>
         )}
         
+        {/* BlockEditor按钮 */}
+        {navigation && item.dbId && (
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => navigation.navigate('BlockEditor', { ideaId: item.dbId })}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            activeOpacity={0.3}
+          >
+            <Icon name="expand" size={20} color="#495057" />
+          </TouchableOpacity>
+        )}
+        
         {/* 只有TODO类型才显示复选框 */}
         {isTodo && (
           <TouchableOpacity
@@ -686,6 +701,17 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
     color: '#6c757d',
     opacity: 0.7,
+  },
+  // BlockEditor按钮样式
+  editButton: {
+    marginLeft: 8,
+    width: 32,
+    height: 32,
+    backgroundColor: 'transparent',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    opacity: 0.6,
   },
 });
 

@@ -172,6 +172,7 @@ export default function Home() {
           setIdeas={setIdeas}
           currentDateString={currentDateString}
           showEmptyInput={true}
+          navigation={navigation}
         />
         
         {/* 日历模态框 */}
