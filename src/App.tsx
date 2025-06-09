@@ -8,6 +8,7 @@ import { useColorScheme } from 'react-native';
 import i18n from './i18n';
 import { RootStackParamList } from './Types';
 import Home from './pages/Home';
+import Search from './pages/Search';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -34,6 +35,11 @@ const App = () => {
             <Stack.Screen
               name="Home"
               component={Home}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Search"
+              component={Search}
               options={{ headerShown: false }}
             />
           </Stack.Navigator>
