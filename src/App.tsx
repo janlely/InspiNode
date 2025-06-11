@@ -10,6 +10,7 @@ import { RootStackParamList } from './Types';
 import Home from './pages/Home';
 import Search from './pages/Search';
 import BlockEditorPage from './pages/BlockEditorPage';
+import KeyboardTestPage from './pages/KeyboardTestPage';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -32,6 +33,11 @@ const App = () => {
       <SafeAreaProvider>
         <NavigationContainer ref={navigationRef} theme={scheme === 'dark' ? DarkTheme : DefaultTheme}>
           <Stack.Navigator>
+            {/* <Stack.Screen
+              name="KeyboardTest"
+              component={KeyboardTestPage}
+              options={{ headerShown: false }}
+            /> */}
             <Stack.Screen
               name="Home"
               component={Home}

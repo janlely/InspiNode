@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,13 +7,15 @@ import {
   ScrollView,
 } from 'react-native';
 import { BlockType } from '../Types';
-import { getBlockTypeIcon, getBlockTypeName } from '../utils/BlockTypeUtils';
 
 interface KeyboardToolbarProps {
   currentBlockType: BlockType;
   onBlockTypeChange: (type: BlockType) => void;
   onFormatText: (format: string) => void;
   onInsertText: (text: string) => void;
+  onFormatStateChange?: (format: 'bold' | 'italic', isActive: boolean) => void;
+  isTextStyleMode?: boolean;
+  onTextStyleModeChange?: (isTextStyle: boolean) => void;
 }
 
 export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
@@ -21,97 +23,133 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
   onBlockTypeChange,
   onFormatText,
   onInsertText,
+  onFormatStateChange,
+  isTextStyleMode = false,
+  onTextStyleModeChange,
 }) => {
-  // 块类型按钮数据
-  const blockTypes = [
-    BlockType.PARAGRAPH,
-    BlockType.H1,
-    BlockType.H2,
-    BlockType.H3,
-    BlockType.H4,
-    BlockType.H5,
-    BlockType.H6,
-    BlockType.IMAGE,
+  const [isBoldActive, setIsBoldActive] = useState(false);
+  const [isItalicActive, setIsItalicActive] = useState(false);
+
+  // 默认模式的按钮数据
+  const defaultButtons = [
+    { label: 'Aa', action: 'textStyle', title: '文本样式' },
+    { label: '🖼️', action: 'image', title: '插入图片' },
   ];
 
-  // 格式化按钮数据
-  const formatButtons = [
-    { label: 'B', format: '**', title: '加粗' },
-    { label: 'I', format: '*', title: '斜体' },
-    { label: '~~', format: '~~', title: '删除线' },
-    { label: '`', format: '`', title: '行内代码' },
-    { label: '[]', format: 'link', title: '链接' },
-    { label: 'f(x)', format: '$$', title: '数学公式' },
-    { label: '```', format: '```', title: '代码块' },
+  // 文本样式模式的按钮数据
+  const textStyleButtons = [
+    { label: '<<', action: 'back', title: '返回' },
+    { label: '●', action: 'color', title: '颜色', color: '#ff4444' },
+    { type: BlockType.PARAGRAPH, label: '正文', title: '正文' },
+    { type: BlockType.H1, label: 'H1', title: '标题1' },
+    { type: BlockType.H2, label: 'H2', title: '标题2' },
+    { type: BlockType.H3, label: 'H3', title: '标题3' },
+    { label: 'B', action: 'bold', title: '加粗', isActive: isBoldActive },
+    { label: 'I', action: 'italic', title: '斜体', isActive: isItalicActive },
+    { label: '∑', action: 'formula', title: '数学公式' },
   ];
 
-  // 处理格式化按钮
-  const handleFormatPress = (format: string) => {
-    if (format === 'link') {
-      onInsertText('[](url)');
-    } else if (format === '```') {
-      onInsertText('\n```\n\n```\n');
-    } else if (format === '$$') {
+  // 处理按钮点击
+  const handleButtonPress = (button: any) => {
+    if (button.action === 'textStyle') {
+      onTextStyleModeChange?.(true);
+    } else if (button.action === 'back') {
+      onTextStyleModeChange?.(false);
+    } else if (button.action === 'image') {
+      onBlockTypeChange(BlockType.IMAGE);
+    } else if (button.action === 'formula') {
       onInsertText('$$$$');
-    } else {
-      onFormatText(format);
+    } else if (button.action === 'bold') {
+      const newBoldState = !isBoldActive;
+      setIsBoldActive(newBoldState);
+      onFormatStateChange?.('bold', newBoldState);
+      
+      if (newBoldState) {
+        // 插入加粗标记
+        onInsertText('****');
+      } else {
+        // 取消加粗，需要处理光标位置和可能删除标记
+        onFormatText('bold_cancel');
+      }
+    } else if (button.action === 'italic') {
+      const newItalicState = !isItalicActive;
+      setIsItalicActive(newItalicState);
+      onFormatStateChange?.('italic', newItalicState);
+      
+      if (newItalicState) {
+        // 插入斜体标记
+        onInsertText('**');
+      } else {
+        // 取消斜体，需要处理光标位置和可能删除标记
+        onFormatText('italic_cancel');
+      }
+    } else if (button.action === 'color') {
+      // 显示颜色选择面板
+      onFormatText('show_color_picker');
+    } else if (button.type) {
+      // 处理块类型变化
+      onBlockTypeChange(button.type);
     }
   };
 
+  // 渲染默认模式
+  const renderDefaultMode = () => (
+    <View style={styles.scrollContent}>
+      <View style={styles.section}>
+        {defaultButtons.map((button, index) => (
+          <TouchableOpacity
+            key={index}
+            style={styles.defaultButton}
+            onPress={(event) => {
+              event.stopPropagation();
+              event.preventDefault();
+              handleButtonPress(button);
+            }}
+          >
+            <Text style={styles.defaultButtonText}>
+              {button.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+
+  // 渲染文本样式模式
+  const renderTextStyleMode = () => (
+    <View style={styles.scrollContent}>
+      <View style={styles.section}>
+        {textStyleButtons.map((button, index) => (
+          <TouchableOpacity
+            key={index}
+            style={[
+              styles.textStyleButton,
+              (button.type && currentBlockType === button.type) && styles.activeTextStyleButton,
+              button.isActive && styles.activeTextStyleButton
+            ]}
+            onPress={(event) => {
+              event.stopPropagation();
+              event.preventDefault();
+              handleButtonPress(button);
+            }}
+          >
+            <Text style={[
+              styles.textStyleButtonText,
+              button.color && { color: button.color },
+              (button.type && currentBlockType === button.type) && styles.activeTextStyleButtonText,
+              button.isActive && styles.activeTextStyleButtonText
+            ]}>
+              {button.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* 块类型选择区域 */}
-        <View style={styles.section}>
-          {blockTypes.map((type) => (
-            <TouchableOpacity
-              key={type}
-              style={[
-                styles.blockTypeButton,
-                currentBlockType === type && styles.activeBlockTypeButton
-              ]}
-              onPress={(event) => {
-                event.stopPropagation();
-                event.preventDefault();
-                onBlockTypeChange(type);
-              }}
-            >
-              <Text style={[
-                styles.blockTypeButtonText,
-                currentBlockType === type && styles.activeBlockTypeButtonText
-              ]}>
-                {getBlockTypeIcon(type)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* 分隔线 */}
-        <View style={styles.separator} />
-
-        {/* 格式化按钮区域 */}
-        <View style={styles.section}>
-          {formatButtons.map((button, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.formatButton}
-              onPress={(event) => {
-                event.stopPropagation?.();
-                event.preventDefault?.();
-                handleFormatPress(button.format);
-              }}
-            >
-              <Text style={styles.formatButtonText}>
-                {button.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
+      {isTextStyleMode ? renderTextStyleMode() : renderDefaultMode()}
     </View>
   );
 };
@@ -126,6 +164,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     alignItems: 'center',
+    flexDirection: 'row',
   },
   section: {
     flexDirection: 'row',
@@ -166,5 +205,47 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#495057',
     fontWeight: '500',
+  },
+  insertButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    marginHorizontal: 2,
+    borderRadius: 6,
+    backgroundColor: 'transparent',
+  },
+  insertButtonText: {
+    fontSize: 16,
+    color: '#495057',
+    fontWeight: '500',
+  },
+  defaultButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginHorizontal: 4,
+    borderRadius: 6,
+    backgroundColor: '#007AFF',
+  },
+  defaultButtonText: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  textStyleButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    marginHorizontal: 2,
+    borderRadius: 6,
+    backgroundColor: 'transparent',
+  },
+  activeTextStyleButton: {
+    backgroundColor: '#007AFF',
+  },
+  textStyleButtonText: {
+    fontSize: 14,
+    color: '#495057',
+    fontWeight: '500',
+  },
+  activeTextStyleButtonText: {
+    color: '#ffffff',
   },
 }); 

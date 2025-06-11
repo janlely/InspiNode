@@ -6,6 +6,7 @@ export type RootStackParamList = {
   Home: undefined;
   Search: undefined;
   BlockEditor: { ideaId?: number }; // 新增Block编辑器页面
+  KeyboardTest: undefined; // 键盘焦点测试页面
 };
 
 export type NavigationProps<T extends keyof RootStackParamList> = {
