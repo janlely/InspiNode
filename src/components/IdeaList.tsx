@@ -417,6 +417,21 @@ export const IdeaList: React.FC<IdeaListProps> = ({
             </Text>
           </TouchableOpacity>
         )}
+
+        {/* 只有TODO类型才显示复选框 */}
+        {isTodo && (
+          <TouchableOpacity
+            style={styles.checkboxContainer}
+            onPress={() => handleTodoToggle(item.id)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <View style={[styles.checkbox, item.completed && styles.checkboxChecked]}>
+              {item.completed && (
+                <Text style={styles.checkmark}>✓</Text>
+              )}
+            </View>
+          </TouchableOpacity>
+        )}
         
         {/* BlockEditor按钮 */}
         {navigation && item.dbId && (
@@ -436,20 +451,6 @@ export const IdeaList: React.FC<IdeaListProps> = ({
           </TouchableOpacity>
         )}
         
-        {/* 只有TODO类型才显示复选框 */}
-        {isTodo && (
-          <TouchableOpacity
-            style={styles.checkboxContainer}
-            onPress={() => handleTodoToggle(item.id)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <View style={[styles.checkbox, item.completed && styles.checkboxChecked]}>
-              {item.completed && (
-                <Text style={styles.checkmark}>✓</Text>
-              )}
-            </View>
-          </TouchableOpacity>
-        )}
       </View>
     );
   };
