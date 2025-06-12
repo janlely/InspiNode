@@ -1,35 +1,10 @@
 // @ts-ignore
 import SQLite from 'react-native-sqlite-storage';
+import { IdeaRecord, NewIdea, UpdateIdea } from '../Types';
 
 // 启用Promise API
 SQLite.enablePromise(true);
 
-export interface IdeaRecord {
-  id: number;
-  hint: string;
-  detail: string;
-  date: string;
-  category?: string;
-  completed?: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface NewIdea {
-  hint: string;
-  detail?: string;
-  date: string;
-  category?: string;
-  completed?: boolean;
-}
-
-export interface UpdateIdea {
-  hint?: string;
-  detail?: string;
-  date?: string;
-  category?: string;
-  completed?: boolean;
-}
 
 class IdeaDatabase {
   private db: any = null;

@@ -9,8 +9,9 @@ import i18n from './i18n';
 import { RootStackParamList } from './Types';
 import Home from './pages/Home';
 import Search from './pages/Search';
-import BlockEditorPage from './pages/BlockEditorPage';
+// import BlockEditorPage from './pages/BlockEditorPage';
 import KeyboardTestPage from './pages/KeyboardTestPage';
+import EditorPage from './pages/Editor';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -48,9 +49,14 @@ const App = () => {
               component={Search}
               options={{ headerShown: false }}
             />
-            <Stack.Screen
+            {/* <Stack.Screen
               name="BlockEditor"
               component={BlockEditorPage}
+              options={{ headerShown: false }}
+            /> */}
+            <Stack.Screen
+              name="Editor"
+              component={EditorPage}
               options={{ headerShown: false }}
             />
           </Stack.Navigator>

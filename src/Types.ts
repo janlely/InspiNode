@@ -7,6 +7,7 @@ export type RootStackParamList = {
   Search: undefined;
   BlockEditor: { ideaId?: number }; // 新增Block编辑器页面
   KeyboardTest: undefined; // 键盘焦点测试页面
+  Editor: { idea: IdeaRecord}; // 编辑器页面
 };
 
 export type NavigationProps<T extends keyof RootStackParamList> = {
@@ -46,7 +47,8 @@ export interface Block {
   id: string;
   type: BlockType;
   content: string;
-  order: number;
+  isActive: boolean;
+  cursorPosition?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -56,4 +58,31 @@ export interface BlockTypeConfig {
   icon: string;
   name: string;
   markdownPrefix: string;
+}
+
+export interface IdeaRecord {
+  id: number;
+  hint: string;
+  detail: string;
+  date: string;
+  category?: string;
+  completed?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NewIdea {
+  hint: string;
+  detail?: string;
+  date: string;
+  category?: string;
+  completed?: boolean;
+}
+
+export interface UpdateIdea {
+  hint?: string;
+  detail?: string;
+  date?: string;
+  category?: string;
+  completed?: boolean;
 }

@@ -15,7 +15,8 @@ import {
   TouchableWithoutFeedback,
 } from 'react-native';
 import Icon from '@react-native-vector-icons/fontawesome';
-import { ideaDB, NewIdea, UpdateIdea } from '../utils/IdeaDatabase';
+import { ideaDB } from '../utils/IdeaDatabase';
+import { NewIdea, UpdateIdea } from '../Types'
 import { ContentType } from '../Types';
 import { 
   CONTENT_TYPES, 
@@ -419,7 +420,13 @@ export const IdeaList: React.FC<IdeaListProps> = ({
         {navigation && item.dbId && (
           <TouchableOpacity
             style={styles.editButton}
-            onPress={() => navigation.navigate('BlockEditor', { ideaId: item.dbId })}
+            onPress={() => navigation.navigate('Editor', { idea: {
+              id: item.dbId,
+              hint: item.text,
+              detail: '',
+              date: currentDateString,
+              category: item.manualCategory,
+            }})}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             activeOpacity={0.3}
           >
