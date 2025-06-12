@@ -163,7 +163,6 @@ export const IdeaList: React.FC<IdeaListProps> = ({
 
   // 更新想法文本
   const updateIdea = async (id: string, text: string) => {
-    // Filter out newline characters to prevent unwanted line breaks
     const filteredText = text.replace(/\n/g, '');
     setIdeas(prev => 
       prev.map(idea => 
@@ -361,7 +360,6 @@ export const IdeaList: React.FC<IdeaListProps> = ({
   };
 
   const handleEmptyInputChange = (text: string) => {
-    // Filter out newline characters to prevent unwanted line breaks
     const filteredText = text.replace(/\n/g, '');
     setEmptyInputValue(filteredText);
   };

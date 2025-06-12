@@ -34,23 +34,17 @@ export default function Editor({ navigation, route }: EditorProps) {
     loadBlocks();
   }, [idea.id]);
 
-  // 页面卸载时保存数据
+  // 页面卸载时清理和保存
   useEffect(() => {
     return () => {
-      console.log('🚪 Page unloading, performing final save');
-      // 清理自动保存定时器
+      // 清理定时器
       if (autoSaveTimerRef.current) {
-        console.log('🧹 Clearing auto-save timer on unmount');
         clearTimeout(autoSaveTimerRef.current);
       }
       
-      // 页面卸载时执行最后一次保存 - 使用ref中的最新状态
-      console.log('💾 Calling saveDirtyBlocks on unmount with ref data');
+      // 最终保存
       const currentBlocks = currentBlocksRef.current;
       const currentOriginalIds = currentOriginalBlockIdsRef.current;
-      
-      console.log('🔍 Unmount blocks count:', currentBlocks.length);
-      console.log('🔍 Unmount originalBlockIds count:', currentOriginalIds.size);
       
       if (currentBlocks.length > 0 || currentOriginalIds.size > 0) {
         saveDirtyBlocksWithData(currentBlocks, currentOriginalIds);
@@ -61,57 +55,39 @@ export default function Editor({ navigation, route }: EditorProps) {
   // 同步最新状态到ref
   useEffect(() => {
     currentBlocksRef.current = blocks;
-  }, [blocks]);
-
-  useEffect(() => {
     currentOriginalBlockIdsRef.current = originalBlockIds;
-  }, [originalBlockIds]);
+  }, [blocks, originalBlockIds]);
 
-  // 优化的自动保存 - 只在实际有变更时触发
+  // 智能自动保存逻辑
   useEffect(() => {
-    console.log('🔄 Auto-save effect triggered, isLoading:', isLoading, 'blocks count:', blocks.length);
+    if (isLoading) return;
+
+    const currentSnapshot = JSON.stringify(blocks.map(b => ({ 
+      id: b.id, content: b.content, isDirty: b.isDirty 
+    })));
+    const hasDirtyBlocks = blocks.some(b => b.isDirty);
+    const snapshotChanged = currentSnapshot !== lastSavedBlocksRef.current;
     
-    if (!isLoading) {
-      // 创建blocks的快照用于比较
-      const currentSnapshot = JSON.stringify(blocks.map(b => ({ id: b.id, content: b.content, isDirty: b.isDirty })));
-      const hasDirtyBlocks = blocks.some(b => b.isDirty);
-      const snapshotChanged = currentSnapshot !== lastSavedBlocksRef.current;
-      
-      console.log('📸 Current snapshot:', currentSnapshot);
-      console.log('📸 Last saved snapshot:', lastSavedBlocksRef.current);
-      console.log('🔍 Has dirty blocks:', hasDirtyBlocks);
-      console.log('🔍 Snapshot changed:', snapshotChanged);
-      
-      // 只有在blocks真正变化且有dirty标记时才设置自动保存
-      if (snapshotChanged && hasDirtyBlocks) {
-        console.log('⏰ Setting up auto-save timer (5 seconds)');
-        
-        // 清除之前的定时器
-        if (autoSaveTimerRef.current) {
-          console.log('🧹 Clearing previous auto-save timer');
-          clearTimeout(autoSaveTimerRef.current);
-        }
-        
-        // 设置新的定时器 - 缩短到5秒以提供更好的用户体验
-        autoSaveTimerRef.current = setTimeout(() => {
-          console.log('⏰ Auto-save timer triggered, calling saveDirtyBlocks');
-          // 使用当前ref中的最新数据，确保能获取到最新状态
-          const latestBlocks = currentBlocksRef.current;
-          const latestOriginalIds = currentOriginalBlockIdsRef.current;
-          console.log('⏰ Using latest data - blocks count:', latestBlocks.length, 'originalIds count:', latestOriginalIds.size);
-          
-          if (latestBlocks.length > 0) {
-            saveDirtyBlocksWithData(latestBlocks, latestOriginalIds);
-          } else {
-            console.log('⚠️ No blocks available for auto-save, falling back to regular save');
-            saveDirtyBlocks();
-          }
-        }, 5000);
-      } else {
-        console.log('❌ Auto-save not triggered - snapshotChanged:', snapshotChanged, 'hasDirtyBlocks:', hasDirtyBlocks);
+    // 只有在内容变化且有待保存的更改时才触发自动保存
+    if (snapshotChanged && hasDirtyBlocks) {
+      // 清除之前的定时器
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
       }
+      
+      // 设置5秒延迟自动保存
+      autoSaveTimerRef.current = setTimeout(() => {
+        const latestBlocks = currentBlocksRef.current;
+        const latestOriginalIds = currentOriginalBlockIdsRef.current;
+        
+        if (latestBlocks.length > 0) {
+          saveDirtyBlocksWithData(latestBlocks, latestOriginalIds);
+        } else {
+          saveDirtyBlocks();
+        }
+      }, 5000);
     }
-  }, [blocks, isLoading]); // 移除saveDirtyBlocks依赖以避免循环
+  }, [blocks, isLoading]);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -122,37 +98,22 @@ export default function Editor({ navigation, route }: EditorProps) {
 
   // 监听键盘显示/隐藏
   useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
-      console.log('键盘显示', e);
-      setShowKeyboardToolbar(true);
-    });
-    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', (e) => {
-      console.log('键盘隐藏', e);
-      setShowKeyboardToolbar(false);
-    });
+    const showToolbar = () => setShowKeyboardToolbar(true);
+    const hideToolbar = () => setShowKeyboardToolbar(false);
 
-    // 也监听 TextInput 的 focus 和 blur 事件作为备选方案
-    const keyboardWillShowListener = Keyboard.addListener('keyboardWillShow', (e) => {
-      console.log('键盘即将显示', e);
-      setShowKeyboardToolbar(true);
-    });
-    const keyboardWillHideListener = Keyboard.addListener('keyboardWillHide', (e) => {
-      console.log('键盘即将隐藏', e);
-      setShowKeyboardToolbar(false);
-    });
+    const listeners = [
+      Keyboard.addListener('keyboardDidShow', showToolbar),
+      Keyboard.addListener('keyboardDidHide', hideToolbar),
+      Keyboard.addListener('keyboardWillShow', showToolbar),
+      Keyboard.addListener('keyboardWillHide', hideToolbar),
+    ];
 
-    return () => {
-      keyboardDidHideListener.remove();
-      keyboardDidShowListener.remove();
-      keyboardWillShowListener.remove();
-      keyboardWillHideListener.remove();
-    };
+    return () => listeners.forEach(listener => listener.remove());
   }, []);
 
-  // 监听活跃 block 变化，如果有活跃 block 则显示工具栏
+  // 监听活跃block变化，显示工具栏
   useEffect(() => {
     const hasActiveBlock = blocks.some(block => block.isActive);
-    console.log('活跃 block 状态:', hasActiveBlock);
     if (hasActiveBlock) {
       setShowKeyboardToolbar(true);
     }
@@ -363,158 +324,61 @@ export default function Editor({ navigation, route }: EditorProps) {
     }
   };
 
-  // 使用指定数据保存blocks（用于页面卸载时）
-  const saveDirtyBlocksWithData = async (blocksData: Block[], originalIds: Set<string>) => {
-    console.log('💾 saveDirtyBlocksWithData called with specific data');
-    console.log('📊 Blocks data:', blocksData.map(b => ({
-      id: b.id,
-      content: b.content.substring(0, 20) + (b.content.length > 20 ? '...' : ''),
-      isDirty: b.isDirty,
-      type: b.type
-    })));
-    console.log('📊 Original IDs:', Array.from(originalIds));
+  // 统一的保存逻辑核心函数
+  const performSave = async (blocksData: Block[], originalIds: Set<string>, updateState = true) => {
     
     try {
       const currentBlockIds = new Set(blocksData.map(block => block.id));
       
-      // 1. 识别需要删除的blocks (在原始列表中但不在当前列表中)
+      // 1. 识别需要删除的blocks
       const blocksToDelete = Array.from(originalIds).filter(id => !currentBlockIds.has(id));
       
-      // 2. 识别需要新增或更新的blocks
+      // 2. 识别需要保存的blocks
       const blocksToSave = blocksData
-        .filter(block => {
-          // 新block或者dirty block需要保存
-          const isNew = !originalIds.has(block.id);
-          const isDirty = block.isDirty;
-          console.log(`🔍 Block ${block.id}: isNew=${isNew}, isDirty=${isDirty}, content="${block.content.substring(0, 20)}..."`);
-          return isNew || isDirty;
-        })
+        .filter(block => !originalIds.has(block.id) || block.isDirty)
         .map((block, index) => ({
           blockId: block.id,
           type: block.type,
           content: block.content,
-          orderIndex: blocksData.indexOf(block), // 使用在数组中的位置作为顺序
+          orderIndex: blocksData.indexOf(block),
         }));
       
-      console.log('🗑️ Blocks to delete:', blocksToDelete);
-      console.log('💾 Blocks to save:', blocksToSave.map(b => ({
-        id: b.blockId,
-        content: b.content.substring(0, 20) + (b.content.length > 20 ? '...' : ''),
-        type: b.type,
-        orderIndex: b.orderIndex
-      })));
-      
-      // 如果没有任何变更，直接返回
+      // 如果没有变更，直接返回
       if (blocksToDelete.length === 0 && blocksToSave.length === 0) {
-        console.log('❌ No changes to save, returning early');
         return;
       }
 
-      console.log(`🔄 Saving changes: ${blocksToSave.length} to save, ${blocksToDelete.length} to delete`);
-
-      // 3. 执行删除操作
+      // 3. 执行数据库操作
       for (const blockId of blocksToDelete) {
-        console.log(`🗑️ Deleting block: ${blockId}`);
         await ideaDB.deleteBlock(idea.id, blockId);
       }
 
-      // 4. 执行新增/更新操作
       if (blocksToSave.length > 0) {
-        console.log(`💾 Saving ${blocksToSave.length} blocks to database`);
-        await ideaDB.saveDirtyBlocks(idea.id, blocksToSave);
-      }
-
-      console.log(`✅ Successfully saved changes for idea ${idea.id} (unmount)`);
-
-    } catch (error) {
-      console.error('❌ Error saving blocks on unmount:', error);
-    }
-  };
-
-  // 保存需要保存的blocks
-  const saveDirtyBlocks = async () => {
-    console.log('💾 saveDirtyBlocks called');
-    console.log('📊 Current blocks state:', blocks.map(b => ({
-      id: b.id,
-      content: b.content.substring(0, 20) + (b.content.length > 20 ? '...' : ''),
-      isDirty: b.isDirty,
-      type: b.type
-    })));
-    console.log('📊 Original block IDs:', Array.from(originalBlockIds));
-    
-    try {
-      const currentBlockIds = new Set(blocks.map(block => block.id));
-      
-      // 1. 识别需要删除的blocks (在原始列表中但不在当前列表中)
-      const blocksToDelete = Array.from(originalBlockIds).filter(id => !currentBlockIds.has(id));
-      
-      // 2. 识别需要新增或更新的blocks
-      const blocksToSave = blocks
-        .filter(block => {
-          // 新block或者dirty block需要保存
-          const isNew = !originalBlockIds.has(block.id);
-          const isDirty = block.isDirty;
-          console.log(`🔍 Block ${block.id}: isNew=${isNew}, isDirty=${isDirty}, content="${block.content.substring(0, 20)}..."`);
-          return isNew || isDirty;
-        })
-        .map((block, index) => ({
-          blockId: block.id,
-          type: block.type,
-          content: block.content,
-          orderIndex: blocks.indexOf(block), // 使用在数组中的位置作为顺序
-        }));
-      
-      console.log('🗑️ Blocks to delete:', blocksToDelete);
-      console.log('💾 Blocks to save:', blocksToSave.map(b => ({
-        id: b.blockId,
-        content: b.content.substring(0, 20) + (b.content.length > 20 ? '...' : ''),
-        type: b.type,
-        orderIndex: b.orderIndex
-      })));
-      
-      // 如果没有任何变更，直接返回
-      if (blocksToDelete.length === 0 && blocksToSave.length === 0) {
-        console.log('❌ No changes to save, returning early');
-        return;
-      }
-
-      console.log(`🔄 Saving changes: ${blocksToSave.length} to save, ${blocksToDelete.length} to delete`);
-
-      // 3. 执行删除操作
-      for (const blockId of blocksToDelete) {
-        console.log(`🗑️ Deleting block: ${blockId}`);
-        await ideaDB.deleteBlock(idea.id, blockId);
-      }
-
-      // 4. 执行新增/更新操作
-      if (blocksToSave.length > 0) {
-        console.log(`💾 Saving ${blocksToSave.length} blocks to database`);
         await ideaDB.saveDirtyBlocks(idea.id, blocksToSave);
       }
       
-      // 5. 更新状态：清除isDirty标记，更新originalBlockIds
-      console.log('🧹 Clearing isDirty flags and updating originalBlockIds');
-      setBlocks(prev => prev.map(block => ({
-        ...block,
-        isDirty: false
-      })));
-      
-      const newOriginalBlockIds = new Set(blocks.map(block => block.id));
-      setOriginalBlockIds(newOriginalBlockIds);
-      console.log('📊 Updated originalBlockIds:', Array.from(newOriginalBlockIds));
-      
-      // 6. 更新lastSavedBlocks快照
-      const newSnapshot = JSON.stringify(blocks.map(b => ({ id: b.id, content: b.content, isDirty: false })));
-      lastSavedBlocksRef.current = newSnapshot;
-      console.log('📸 Updated snapshot:', newSnapshot);
-
-      console.log(`✅ Successfully saved changes for idea ${idea.id}`);
-
+      // 4. 更新状态（仅在非卸载时执行）
+      if (updateState) {
+        setBlocks(prev => prev.map(block => ({ ...block, isDirty: false })));
+        setOriginalBlockIds(new Set(blocksData.map(block => block.id)));
+        lastSavedBlocksRef.current = JSON.stringify(blocksData.map(b => ({ 
+          id: b.id, content: b.content, isDirty: false 
+        })));
+             }
     } catch (error) {
       console.error('❌ Error saving blocks:', error);
-      Alert.alert('保存失败', '无法保存编辑器内容，请检查网络连接');
+      if (updateState) {
+        Alert.alert('保存失败', '无法保存编辑器内容，请检查网络连接');
+      }
     }
   };
+
+  // 使用当前状态保存
+  const saveDirtyBlocks = () => performSave(blocks, originalBlockIds, true);
+  
+  // 使用指定数据保存（页面卸载时）
+  const saveDirtyBlocksWithData = (blocksData: Block[], originalIds: Set<string>) => 
+    performSave(blocksData, originalIds, false);
 
   // 更新当前活跃 block 的文本内容
   const updateActiveBlockText = (text: string, newCursorPosition?: number) => {
@@ -678,49 +542,44 @@ export default function Editor({ navigation, route }: EditorProps) {
 
   // 处理backspace按键逻辑
   const handleBackspacePress = (currentBlock: Block) => {
-    // 如果当前block为空且不是唯一的block，则删除它
-    if (currentBlock.content === '' && blocks.length > 1) {
-      console.log(`🗑️ Deleting empty block ${currentBlock.id} via backspace`);
+    // 如果只有一个block，不删除
+    if (blocks.length <= 1) return;
+    
+    // 如果当前block为空，则删除它
+    if (currentBlock.content === '') {
       const currentIndex = blocks.findIndex(block => block.id === currentBlock.id);
       
       setBlocks(prev => {
         const newBlocks = [...prev];
-        // 删除当前block - 这将自动触发auto-save逻辑来处理数据库删除
         newBlocks.splice(currentIndex, 1);
         
-        // 标记一个现存的block为dirty以触发自动保存
-        let targetIndex = currentIndex > 0 ? currentIndex - 1 : 0;
+        // 标记相邻block为dirty以触发自动保存
+        const targetIndex = currentIndex > 0 ? currentIndex - 1 : 0;
         if (targetIndex < newBlocks.length) {
           newBlocks[targetIndex] = { 
             ...newBlocks[targetIndex], 
             isActive: true,
-            isDirty: true // 关键：标记为dirty以触发自动保存
+            isDirty: true
           };
-          console.log(`🗑️ Marked block ${newBlocks[targetIndex].id} as dirty after deletion`);
         }
         
-        // 如果不是第一个block，聚焦到前一个block
-        if (currentIndex > 0) {
-          // 延迟聚焦到前一个block的末尾
-          setTimeout(() => {
-            const prevBlock = newBlocks[currentIndex - 1];
-            focusBlock(prevBlock.id);
-            // 设置光标到文本末尾
+        // 聚焦到相邻block
+        setTimeout(() => {
+          const targetBlock = newBlocks[targetIndex];
+          focusBlock(targetBlock.id);
+          
+          // 如果是聚焦到前一个block，光标移到末尾
+          if (currentIndex > 0) {
             setTimeout(() => {
-              const textInputRef = getTextInputRef(prevBlock.id);
-              if (textInputRef && prevBlock.content) {
+              const textInputRef = getTextInputRef(targetBlock.id);
+              if (textInputRef && targetBlock.content) {
                 textInputRef.setNativeProps({
-                  selection: { start: prevBlock.content.length, end: prevBlock.content.length }
+                  selection: { start: targetBlock.content.length, end: targetBlock.content.length }
                 });
               }
             }, 50);
-          }, 100);
-        } else {
-          // 如果是第一个block被删除，聚焦到新的第一个block
-          setTimeout(() => {
-            focusBlock(newBlocks[0].id);
-          }, 100);
-        }
+          }
+        }, 100);
         
         return newBlocks;
       });
@@ -730,37 +589,30 @@ export default function Editor({ navigation, route }: EditorProps) {
   // 清理空block的函数 - 当用户停止编辑时自动清理多余的空block
   const cleanupEmptyBlocks = () => {
     setBlocks(prev => {
-      console.log('🧹 cleanupEmptyBlocks called, current blocks:', prev.length);
-      
-      // 保留至少一个block，移除连续的空block（保留最后一个）
       const nonEmptyBlocks = [];
       let lastEmptyIndex = -1;
-      let hasChanges = false;
       
+      // 找出所有非空blocks和最后一个空block的位置
       for (let i = 0; i < prev.length; i++) {
         const block = prev[i];
         if (block.content.trim() === '') {
           lastEmptyIndex = i;
         } else {
           nonEmptyBlocks.push(block);
-          lastEmptyIndex = -1;
         }
       }
       
-      // 检测是否有blocks被删除
       const originalLength = prev.length;
       
       // 如果所有blocks都为空，保留最后一个
       if (nonEmptyBlocks.length === 0 && prev.length > 0) {
-        console.log('🧹 All blocks empty, keeping last one');
         return [prev[prev.length - 1]];
       }
       
-      // 如果有非空blocks，在末尾保留一个空block方便编辑
+      // 保留最后一个空block或创建新的空block
       if (lastEmptyIndex === prev.length - 1) {
         nonEmptyBlocks.push(prev[lastEmptyIndex]);
       } else if (nonEmptyBlocks.length > 0) {
-        // 确保末尾有一个空block
         const lastBlock = nonEmptyBlocks[nonEmptyBlocks.length - 1];
         if (lastBlock.content.trim() !== '') {
           nonEmptyBlocks.push({
@@ -771,32 +623,17 @@ export default function Editor({ navigation, route }: EditorProps) {
             cursorPosition: 0,
             isDirty: true,
           });
-          hasChanges = true;
         }
       }
       
-      // 检测是否有变化（删除了blocks）
-      if (nonEmptyBlocks.length < originalLength) {
-        hasChanges = true;
-        console.log(`🧹 Removed ${originalLength - nonEmptyBlocks.length} empty blocks`);
-        
-        // 为了触发自动保存，我们需要标记一个现存的block为dirty
-        // 这样系统就知道有变更需要保存（包括删除的blocks）
-        if (nonEmptyBlocks.length > 0) {
-          const lastBlock = nonEmptyBlocks[nonEmptyBlocks.length - 1];
-          nonEmptyBlocks[nonEmptyBlocks.length - 1] = {
-            ...lastBlock,
-            isDirty: true // 标记为dirty以触发自动保存
-          };
-          console.log(`🧹 Marked block ${lastBlock.id} as dirty to trigger save`);
-        }
+      // 如果删除了blocks，标记一个block为dirty以触发自动保存
+      if (nonEmptyBlocks.length < originalLength && nonEmptyBlocks.length > 0) {
+        const lastIndex = nonEmptyBlocks.length - 1;
+        nonEmptyBlocks[lastIndex] = {
+          ...nonEmptyBlocks[lastIndex],
+          isDirty: true
+        };
       }
-      
-      console.log('🧹 Cleanup result:', {
-        originalLength,
-        newLength: nonEmptyBlocks.length,
-        hasChanges
-      });
       
       return nonEmptyBlocks;
     });
@@ -855,44 +692,44 @@ export default function Editor({ navigation, route }: EditorProps) {
 const markdownStyles = {
   body: {
     fontSize: 16,
-    lineHeight: 26,
-    paddingVertical: 2,
+    lineHeight: 22,
+    paddingVertical: 1,
     color: '#333333',
   },
   heading1: {
     fontSize: 28,
     fontWeight: 'bold' as const,
     color: '#1a1a1a',
-    marginBottom: 2,
-    lineHeight: 32,
+    marginBottom: 1,
+    lineHeight: 30,
   },
   heading2: {
     fontSize: 24,
     fontWeight: 'bold' as const,
     color: '#1a1a1a',
-    marginBottom: 2,
-    lineHeight: 28,
+    marginBottom: 1,
+    lineHeight: 26,
   },
   heading3: {
     fontSize: 20,
     fontWeight: 'bold' as const,
     color: '#1a1a1a',
-    marginBottom: 1,
-    lineHeight: 24,
+    marginBottom: 0,
+    lineHeight: 22,
   },
   heading4: {
     fontSize: 18,
     fontWeight: 'bold' as const,
     color: '#1a1a1a',
-    marginBottom: 1,
-    lineHeight: 22,
+    marginBottom: 0,
+    lineHeight: 20,
   },
   heading5: {
     fontSize: 16,
     fontWeight: 'bold' as const,
     color: '#1a1a1a',
     marginBottom: 0,
-    lineHeight: 20,
+    lineHeight: 18,
   },
   paragraph: {
     marginBottom: 0,
@@ -969,23 +806,23 @@ const styles = StyleSheet.create({
   },
   flatListContent: {
     flexGrow: 1,
-    paddingTop: 8,
+    paddingTop: 4,
   },
   blockText: {
     fontSize: 16,
-    lineHeight: 26,
+    lineHeight: 22,
     paddingHorizontal: 6,
-    paddingVertical: 6,
+    paddingVertical: 2,
     marginHorizontal: 16,
     color: '#333333',
-    minHeight: 40,
+    minHeight: 32,
   },
   markdownBlock: {
     marginHorizontal: 16,
-    minHeight: 40, // 与 blockText 的 minHeight 保持一致
-    paddingHorizontal: 6, // 与 blockText 的 paddingHorizontal 保持一致
-    paddingVertical: 6, // 与 blockText 的 paddingVertical 保持一致
-    justifyContent: 'center', // 当内容较少时垂直居中
+    minHeight: 32,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    justifyContent: 'center',
   },
   footerSpace: {
     width: '100%',
