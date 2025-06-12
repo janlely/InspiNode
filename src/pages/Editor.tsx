@@ -249,7 +249,7 @@ export default function Editor({ navigation, route }: EditorProps) {
           isDirty: true
         } : block
       ));
-      console.log('图片已设置到当前block:', imageUri);
+      
     } else {
       // 如果没有活跃block，创建新的图片block
       const newBlock: Block = {
@@ -265,7 +265,7 @@ export default function Editor({ navigation, route }: EditorProps) {
         ...prev.map(block => ({ ...block, isActive: false })),
         newBlock
       ]);
-      console.log('已创建新的图片block:', imageUri);
+      
     }
   };
 
@@ -283,19 +283,11 @@ export default function Editor({ navigation, route }: EditorProps) {
 
   // 从数据库加载blocks
   const loadBlocks = async () => {
-    console.log('📥 Loading blocks for idea:', idea.id);
     try {
       setIsLoading(true);
       const blockRecords = await ideaDB.getBlocksByIdeaId(idea.id);
-      console.log('📥 Loaded block records from DB:', blockRecords.map(r => ({
-        block_id: r.block_id,
-        content: r.content.substring(0, 20) + (r.content.length > 20 ? '...' : ''),
-        type: r.type,
-        order_index: r.order_index
-      })));
       
       if (blockRecords.length === 0) {
-        console.log('📭 No blocks found, creating default empty block');
         // 如果没有数据，创建一个空的paragraph block
         const defaultBlocks = [{
           id: Date.now().toString(),
@@ -310,7 +302,6 @@ export default function Editor({ navigation, route }: EditorProps) {
         
         // 初始化快照
         lastSavedBlocksRef.current = JSON.stringify(defaultBlocks.map(b => ({ id: b.id, content: b.content, isDirty: b.isDirty })));
-        console.log('📸 Initial snapshot for empty blocks:', lastSavedBlocksRef.current);
       } else {
         // 转换数据库记录为UI Block
         const uiBlocks: Block[] = blockRecords.map((record, index) => ({
@@ -321,21 +312,13 @@ export default function Editor({ navigation, route }: EditorProps) {
           cursorPosition: 0,
           isDirty: false,
         }));
-        console.log('🔄 Converted to UI blocks:', uiBlocks.map(b => ({
-          id: b.id,
-          content: b.content.substring(0, 20) + (b.content.length > 20 ? '...' : ''),
-          type: b.type,
-          isDirty: b.isDirty
-        })));
         
         setBlocks(uiBlocks);
         const originalIds = new Set(blockRecords.map(record => record.block_id));
         setOriginalBlockIds(originalIds);
-        console.log('📊 Set originalBlockIds:', Array.from(originalIds));
         
         // 初始化快照
         lastSavedBlocksRef.current = JSON.stringify(uiBlocks.map(b => ({ id: b.id, content: b.content, isDirty: b.isDirty })));
-        console.log('📸 Initial snapshot for loaded blocks:', lastSavedBlocksRef.current);
       }
     } catch (error) {
       console.error('❌ Error loading blocks:', error);
@@ -353,7 +336,6 @@ export default function Editor({ navigation, route }: EditorProps) {
       lastSavedBlocksRef.current = JSON.stringify(fallbackBlocks.map(b => ({ id: b.id, content: b.content, isDirty: b.isDirty })));
     } finally {
       setIsLoading(false);
-      console.log('📥 loadBlocks completed, isLoading set to false');
     }
   };
 
@@ -450,11 +432,9 @@ export default function Editor({ navigation, route }: EditorProps) {
         onChangeText={text => {
           // Filter out newline characters to prevent unwanted line breaks from Enter key
           const filteredText = text.replace(/\n/g, '');
-          console.log(`✏️ Text changed for block ${item.id}: "${filteredText}" (isDirty: true)`);
           setBlocks(prev => prev.map(block => block.id === item.id ? { ...block, content: filteredText, isDirty: true } : block));
         }}
         onSubmitEditing={() => {
-          console.log('onSubmitEditing');
           // 使用通用的创建新block函数
           createNewBlockAfterCurrent(item.content);
         }}

@@ -1,7 +1,5 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-// 如果你使用的是后端加载翻译文件，则还需要导入 i18next-http-backend
-// import Backend from 'i18next-http-backend';
 
 const resources = {
   en: {
@@ -25,8 +23,6 @@ const resources = {
 i18n
   // 使用插件以支持 React
   .use(initReactI18next)
-  // 如果使用后端加载翻译文件，取消下面一行注释并配置你的后端
-  // .use(Backend)
   .init({
     resources,
     lng: "en", // 默认语言

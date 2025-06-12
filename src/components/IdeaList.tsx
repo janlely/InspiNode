@@ -20,7 +20,6 @@ import { NewIdea, UpdateIdea } from '../Types'
 import { ContentType } from '../Types';
 import { 
   CONTENT_TYPES, 
-  detectContentType, 
   getFinalContentType, 
   getContentIcon 
 } from '../utils/ContentTypeUtils';

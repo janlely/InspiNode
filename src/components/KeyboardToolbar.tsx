@@ -73,13 +73,7 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
     // 确保光标位置在有效范围内
     const finalCursorPosition = Math.max(0, Math.min(newCursorPosition, newText.length));
     
-    console.log('标题处理:', {
-      原文本: currentText,
-      新文本: newText,
-      原光标位置: cursorPosition,
-      字符变化: characterChange,
-      新光标位置: finalCursorPosition
-    });
+
     
     onTextChange(newText, finalCursorPosition);
   };
@@ -94,12 +88,7 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
     const newText = beforeCursor + boldMarker + afterCursor;
     const newCursorPosition = cursorPosition + 2; // 移动到第一个 ** 后面，第二个 ** 前面（中间位置）
     
-    console.log('加粗处理:', {
-      原文本: currentText,
-      新文本: newText,
-      原光标位置: cursorPosition,
-      新光标位置: newCursorPosition
-    });
+
     
     onTextChange(newText, newCursorPosition);
   };
@@ -114,12 +103,7 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
     const newText = beforeCursor + italicMarker + afterCursor;
     const newCursorPosition = cursorPosition + 1; // 移动到第一个 * 后面，第二个 * 前面（中间位置）
     
-    console.log('斜体处理:', {
-      原文本: currentText,
-      新文本: newText,
-      原光标位置: cursorPosition,
-      新光标位置: newCursorPosition
-    });
+
     
     onTextChange(newText, newCursorPosition);
   };
@@ -150,18 +134,7 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
       // 确保光标位置在有效范围内
       const finalCursorPosition = Math.max(0, Math.min(newCursorPosition, newText.length));
       
-      console.log('正文处理:', {
-        原文本: currentText,
-        新文本: newText,
-        原光标位置: cursorPosition,
-        字符变化: characterChange,
-        新光标位置: finalCursorPosition
-      });
-      
       onTextChange(newText, finalCursorPosition);
-    } else {
-      // 已经是正文，无需改变
-      console.log('已经是正文，无需改变');
     }
   };
 
@@ -208,13 +181,7 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
     // 确保光标位置在有效范围内
     const finalCursorPosition = Math.max(0, Math.min(newCursorPosition, newText.length));
     
-    console.log('列表处理:', {
-      原文本: currentText,
-      新文本: newText,
-      原光标位置: cursorPosition,
-      字符变化: characterChange,
-      新光标位置: finalCursorPosition
-    });
+
     
     onTextChange(newText, finalCursorPosition);
   };
@@ -242,11 +209,7 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
     }
     // 如果选择黑色（默认色），不添加任何标记
 
-    console.log('颜色选择:', {
-      选择颜色: color.name,
-      原文本: currentText,
-      光标位置: cursorPosition
-    });
+
   };
 
   // 请求相册权限
@@ -287,7 +250,7 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
       // 复制文件
       await RNFS.copyFile(sourceUri, destPath);
       
-      console.log('图片已复制到本地:', destPath);
+
       return `file://${destPath}`;
     } catch (error) {
       console.error('复制图片失败:', error);
@@ -317,7 +280,6 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
       // 启动图片选择器
       launchImageLibrary(options, async (response: ImagePickerResponse) => {
         if (response.didCancel) {
-          console.log('用户取消了图片选择');
           return;
         }
 
@@ -339,7 +301,7 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
                 onImageSelect(localImageUri);
               }
               
-              console.log('图片选择成功:', localImageUri);
+
             } catch (error) {
               console.error('处理图片失败:', error);
               Alert.alert('处理失败', '图片处理失败，请重试');

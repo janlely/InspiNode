@@ -18,7 +18,6 @@ class IdeaDatabase {
 
   // 初始化数据库
   async initialize(): Promise<void> {
-    console.log('initialize');
     if (this.isInitialized) return;
 
     try {
@@ -39,13 +38,11 @@ class IdeaDatabase {
 
   // 检查数据库版本并执行迁移
   private async checkAndMigrate(): Promise<void> {
-    console.log('checkAndMigrate');
     if (!this.db) throw new Error('Database not initialized');
 
     try {
       // 获取当前数据库版本
       const currentVersion = await this.getDatabaseVersion();
-      console.log('currentVersion', currentVersion);
 
       if (currentVersion < IdeaDatabase.CURRENT_VERSION) {
         await this.performMigration(currentVersion, IdeaDatabase.CURRENT_VERSION);
@@ -75,7 +72,6 @@ class IdeaDatabase {
   private async setDatabaseVersion(version: number): Promise<void> {
     try {
       await this.db.executeSql(`PRAGMA user_version = ${version};`);
-      console.log(`📝 Database version set to: ${version}`);
     } catch (error) {
       console.error('❌ Error setting database version:', error);
       throw error;
@@ -84,8 +80,6 @@ class IdeaDatabase {
 
   // 执行数据库迁移
   private async performMigration(fromVersion: number, toVersion: number): Promise<void> {
-    console.log(`🚀 Migrating database from version ${fromVersion} to ${toVersion}`);
-
     // 按版本逐步迁移
     for (let version = fromVersion; version < toVersion; version++) {
       await this.migrateToVersion(version + 1);
@@ -94,8 +88,6 @@ class IdeaDatabase {
 
   // 迁移到特定版本
   private async migrateToVersion(version: number): Promise<void> {
-    console.log(`⬆️ Migrating to version ${version}`);
-
     switch (version) {
       case 1:
         await this.migrateToVersion1();
@@ -125,8 +117,6 @@ class IdeaDatabase {
 
   // 迁移到版本1：创建基础表结构
   private async migrateToVersion1(): Promise<void> {
-    console.log('📋 Creating initial table structure...');
-
     const createIdeasTable = `
       CREATE TABLE IF NOT EXISTS ideas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -149,14 +139,8 @@ class IdeaDatabase {
 
     try {
       await this.db.executeSql(createIdeasTable);
-      console.log('✅ Ideas table created');
-
       await this.db.executeSql(createDateIndex);
-      console.log('✅ Date index created');
-
       await this.db.executeSql(createCreatedAtIndex);
-      console.log('✅ Created_at index created');
-
     } catch (error) {
       console.error('❌ Error in version 1 migration:', error);
       throw error;
@@ -165,15 +149,12 @@ class IdeaDatabase {
 
   // 迁移到版本2：添加分类字段
   private async migrateToVersion2(): Promise<void> {
-    console.log('📋 Adding category field for version 2...');
-    
     const addCategoryColumn = `
       ALTER TABLE ideas ADD COLUMN category TEXT DEFAULT NULL;
     `;
     
     try {
       await this.db.executeSql(addCategoryColumn);
-      console.log('✅ Category column added successfully');
     } catch (error) {
       console.error('❌ Error in version 2 migration:', error);
       throw error;
@@ -182,8 +163,6 @@ class IdeaDatabase {
 
   // 迁移到版本3：添加格式化日期字段
   private async migrateToVersion3(): Promise<void> {
-    console.log('📋 Adding formatted_date field for version 3...');
-    
     const addFormattedDateColumn = `
       ALTER TABLE ideas ADD COLUMN formatted_date TEXT DEFAULT NULL;
     `;
@@ -195,19 +174,17 @@ class IdeaDatabase {
     try {
       // 添加格式化日期字段
       await this.db.executeSql(addFormattedDateColumn);
-      console.log('✅ Formatted_date column added successfully');
       
       // 为现有数据填充格式化日期
-      const updateFormattedDate = `
-        UPDATE ideas SET formatted_date = REPLACE(date, '-', '') WHERE formatted_date IS NULL;
+      const updateFormattedDates = `
+        UPDATE ideas 
+        SET formatted_date = date 
+        WHERE formatted_date IS NULL;
       `;
-      await this.db.executeSql(updateFormattedDate);
-      console.log('✅ Existing data updated with formatted dates');
+      await this.db.executeSql(updateFormattedDates);
       
       // 创建索引
       await this.db.executeSql(createFormattedDateIndex);
-      console.log('✅ Formatted_date index created');
-      
     } catch (error) {
       console.error('❌ Error in version 3 migration:', error);
       throw error;
@@ -216,15 +193,12 @@ class IdeaDatabase {
 
   // 迁移到版本4：添加完成状态字段
   private async migrateToVersion4(): Promise<void> {
-    console.log('📋 Adding completed field for version 4...');
-    
     const addCompletedColumn = `
-      ALTER TABLE ideas ADD COLUMN completed INTEGER DEFAULT 0;
+      ALTER TABLE ideas ADD COLUMN completed BOOLEAN DEFAULT FALSE;
     `;
     
     try {
       await this.db.executeSql(addCompletedColumn);
-      console.log('✅ Completed column added successfully');
     } catch (error) {
       console.error('❌ Error in version 4 migration:', error);
       throw error;
@@ -233,42 +207,33 @@ class IdeaDatabase {
 
   // 迁移到版本5：创建blocks表
   private async migrateToVersion5(): Promise<void> {
-    console.log('📋 Creating blocks table for version 5...');
-    
     const createBlocksTable = `
       CREATE TABLE IF NOT EXISTS blocks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        idea_id INTEGER NOT NULL,
         block_id TEXT NOT NULL,
+        idea_id INTEGER NOT NULL,
         type TEXT NOT NULL,
-        content TEXT DEFAULT '',
+        content TEXT NOT NULL,
         order_index INTEGER NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (idea_id) REFERENCES ideas(id) ON DELETE CASCADE,
-        UNIQUE(idea_id, block_id)
+        FOREIGN KEY (idea_id) REFERENCES ideas (id) ON DELETE CASCADE,
+        UNIQUE(block_id, idea_id)
       );
     `;
 
-    // 创建索引以提高查询性能
-    const createIdeaIdIndex = `
+    const createBlocksIdeaIdIndex = `
       CREATE INDEX IF NOT EXISTS idx_blocks_idea_id ON blocks(idea_id);
     `;
 
-    const createOrderIndex = `
+    const createBlocksOrderIndex = `
       CREATE INDEX IF NOT EXISTS idx_blocks_order ON blocks(idea_id, order_index);
     `;
 
     try {
       await this.db.executeSql(createBlocksTable);
-      console.log('✅ Blocks table created');
-
-      await this.db.executeSql(createIdeaIdIndex);
-      console.log('✅ Blocks idea_id index created');
-
-      await this.db.executeSql(createOrderIndex);
-      console.log('✅ Blocks order index created');
-
+      await this.db.executeSql(createBlocksIdeaIdIndex);
+      await this.db.executeSql(createBlocksOrderIndex);
     } catch (error) {
       console.error('❌ Error in version 5 migration:', error);
       throw error;
@@ -535,7 +500,6 @@ class IdeaDatabase {
         dates.push(result[0].rows.item(i).date);
       }
       
-      console.log(`📅 Found ${dates.length} dates with ideas in ${year}-${month} (optimized query)`);
       return dates;
     } catch (error) {
       console.error('❌ Error getting dates with ideas by month:', error);
@@ -547,8 +511,6 @@ class IdeaDatabase {
 
   // 降级查询方法（兼容性）
   private async getDatesWithIdeasByMonthFallback(year: number, month: number): Promise<string[]> {
-    console.log('🔄 Using fallback query method...');
-    
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
 
@@ -563,7 +525,6 @@ class IdeaDatabase {
         dates.push(result[0].rows.item(i).date);
       }
       
-      console.log(`📅 Found ${dates.length} dates with ideas in ${year}-${month} (fallback)`);
       return dates;
     } catch (error) {
       console.error('❌ Error in fallback query:', error);
@@ -580,7 +541,6 @@ class IdeaDatabase {
     try {
       const result = await this.db.executeSql(deleteQuery);
       const deletedCount = result[0].rowsAffected;
-      console.log(`🧹 Cleaned up ${deletedCount} empty ideas`);
       return deletedCount;
     } catch (error) {
       console.error('❌ Error cleaning up empty ideas:', error);
@@ -619,7 +579,6 @@ class IdeaDatabase {
         await this.db.close();
         this.db = null;
         this.isInitialized = false;
-        console.log('🔒 Database closed successfully');
       } catch (error) {
         console.error('❌ Error closing database:', error);
         throw new Error('关闭数据库失败');
@@ -662,7 +621,6 @@ class IdeaDatabase {
 
   // 获取指定idea的所有blocks
   async getBlocksByIdeaId(ideaId: number): Promise<BlockRecord[]> {
-    console.log(`🗄️ [DB] getBlocksByIdeaId called for idea ${ideaId}`);
     await this.ensureInitialized();
 
     const selectQuery = `
@@ -674,7 +632,6 @@ class IdeaDatabase {
     try {
       const result = await this.db.executeSql(selectQuery, [ideaId]);
       const blocks = this.parseBlockQueryResult(result);
-      console.log(`🗄️ [DB] Found ${blocks.length} blocks for idea ${ideaId}`);
       return blocks;
     } catch (error) {
       console.error('❌ Error fetching blocks by idea ID:', error);
@@ -752,18 +709,14 @@ class IdeaDatabase {
 
   // 删除block
   async deleteBlock(ideaId: number, blockId: string): Promise<void> {
-    console.log(`🗄️ [DB] deleteBlock called for idea ${ideaId}, block ${blockId}`);
     await this.ensureInitialized();
 
     const deleteQuery = 'DELETE FROM blocks WHERE idea_id = ? AND block_id = ?;';
 
     try {
       const result = await this.db.executeSql(deleteQuery, [ideaId, blockId]);
-      console.log(`🗄️ [DB] Delete result for block ${blockId}: rowsAffected=${result[0].rowsAffected}`);
       if (result[0].rowsAffected === 0) {
         console.warn('⚠️ No block found with idea_id:', ideaId, 'block_id:', blockId);
-      } else {
-        console.log(`🗄️ [DB] Successfully deleted block ${blockId}`);
       }
     } catch (error) {
       console.error('❌ Error deleting block:', error);
@@ -773,29 +726,17 @@ class IdeaDatabase {
 
   // 批量保存blocks（用于自动保存）
   async saveDirtyBlocks(ideaId: number, blocks: { blockId: string; type: BlockType; content: string; orderIndex: number }[]): Promise<void> {
-    console.log(`🗄️ [DB] saveDirtyBlocks called for idea ${ideaId} with ${blocks.length} blocks`);
-    console.log(`🗄️ [DB] Blocks to save:`, blocks.map(b => ({
-      blockId: b.blockId,
-      content: b.content.substring(0, 20) + (b.content.length > 20 ? '...' : ''),
-      type: b.type,
-      orderIndex: b.orderIndex
-    })));
-    
     await this.ensureInitialized();
 
     if (blocks.length === 0) {
-      console.log(`🗄️ [DB] No blocks to save, returning early`);
       return;
     }
 
     try {
       // 开始事务
-      console.log(`🗄️ [DB] Starting transaction`);
       await this.db.executeSql('BEGIN TRANSACTION;');
 
       for (const block of blocks) {
-        console.log(`🗄️ [DB] Processing block ${block.blockId}: "${block.content.substring(0, 30)}..."`);
-        
         // 先尝试更新，如果不存在则插入
         const updateQuery = `
           UPDATE blocks 
@@ -811,39 +752,29 @@ class IdeaDatabase {
           block.blockId,
         ]);
 
-        console.log(`🗄️ [DB] Update result for block ${block.blockId}: rowsAffected=${updateResult[0].rowsAffected}`);
-
         // 如果更新没有影响任何行，说明记录不存在，需要插入
         if (updateResult[0].rowsAffected === 0) {
-          console.log(`🗄️ [DB] Block ${block.blockId} not found, inserting new record`);
           const insertQuery = `
             INSERT INTO blocks (idea_id, block_id, type, content, order_index)
             VALUES (?, ?, ?, ?, ?);
           `;
 
-          const insertResult = await this.db.executeSql(insertQuery, [
+          await this.db.executeSql(insertQuery, [
             ideaId,
             block.blockId,
             block.type,
             block.content,
             block.orderIndex,
           ]);
-          console.log(`🗄️ [DB] Insert result for block ${block.blockId}: insertId=${insertResult[0].insertId}`);
-        } else {
-          console.log(`🗄️ [DB] Block ${block.blockId} updated successfully`);
         }
       }
 
       // 提交事务
-      console.log(`🗄️ [DB] Committing transaction`);
       await this.db.executeSql('COMMIT;');
-      console.log(`✅ Successfully saved ${blocks.length} blocks for idea ${ideaId}`);
     } catch (error) {
       // 回滚事务
-      console.log(`🗄️ [DB] Error occurred, rolling back transaction`);
       try {
         await this.db.executeSql('ROLLBACK;');
-        console.log(`🗄️ [DB] Transaction rolled back successfully`);
       } catch (rollbackError) {
         console.error('❌ Error rolling back transaction:', rollbackError);
       }
@@ -862,7 +793,6 @@ class IdeaDatabase {
     try {
       const result = await this.db.executeSql(deleteQuery, [ideaId]);
       const deletedCount = result[0].rowsAffected;
-      console.log(`🗑️ Deleted ${deletedCount} blocks for idea ${ideaId}`);
       return deletedCount;
     } catch (error) {
       console.error('❌ Error deleting blocks by idea ID:', error);

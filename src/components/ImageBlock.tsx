@@ -35,11 +35,8 @@ export const ImageBlock: React.FC<ImageBlockProps> = ({ uri, onDelete }) => {
     Image.getSize(
       uri,
       (width, height) => {
-        console.log('📏 图片原始尺寸:', { width, height });
-        
         // 计算最佳显示尺寸
         const displayDimensions = calculateDisplayDimensions(width, height);
-        console.log('📐 计算显示尺寸:', displayDimensions);
         
         setImageDimensions(displayDimensions);
         setIsLoading(false);
@@ -111,7 +108,6 @@ export const ImageBlock: React.FC<ImageBlockProps> = ({ uri, onDelete }) => {
           ]}
           resizeMode="contain"
           onError={() => {
-            console.error('❌ 图片渲染失败');
             setHasError(true);
           }}
         />
