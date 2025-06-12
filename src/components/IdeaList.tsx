@@ -163,9 +163,11 @@ export const IdeaList: React.FC<IdeaListProps> = ({
 
   // 更新想法文本
   const updateIdea = async (id: string, text: string) => {
+    // Filter out newline characters to prevent unwanted line breaks
+    const filteredText = text.replace(/\n/g, '');
     setIdeas(prev => 
       prev.map(idea => 
-        idea.id === id ? { ...idea, text } : idea
+        idea.id === id ? { ...idea, text: filteredText } : idea
       )
     );
   };
@@ -359,7 +361,9 @@ export const IdeaList: React.FC<IdeaListProps> = ({
   };
 
   const handleEmptyInputChange = (text: string) => {
-    setEmptyInputValue(text);
+    // Filter out newline characters to prevent unwanted line breaks
+    const filteredText = text.replace(/\n/g, '');
+    setEmptyInputValue(filteredText);
   };
 
   // 渲染想法项目

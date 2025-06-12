@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import { TextInput } from 'react-native-gesture-handler';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput } from 'react-native';
 import FontAwesome5 from '@react-native-vector-icons/fontawesome5';
 import Feather from '@react-native-vector-icons/feather';
 
@@ -9,18 +8,19 @@ export interface KeyboardToolbarProps {
   currentText?: string; // 当前文本内容
   onTextChange?: (text: string, newCursorPosition?: number) => void; // 文本变化回调，包含新光标位置
   cursorPosition?: number; // 当前光标位置
+  onAddNewBlock?: () => void; // 添加新block的回调
 }
 
 // 常用颜色配置
 const COLORS = [
-  { name: '黑色', value: '#000000', isDefault: true },
-  { name: '红色', value: '#dc3545' },
-  { name: '蓝色', value: '#007bff' },
-  { name: '绿色', value: '#28a745' },
-  { name: '橙色', value: '#fd7e14' },
-  { name: '紫色', value: '#6f42c1' },
-  { name: '粉色', value: '#e83e8c' },
-  { name: '灰色', value: '#6c757d' },
+  { name: '黑色', color: '#000000', isDefault: true },
+  { name: '红色', color: '#dc3545' },
+  { name: '蓝色', color: '#007bff' },
+  { name: '绿色', color: '#28a745' },
+  { name: '橙色', color: '#fd7e14' },
+  { name: '紫色', color: '#6f42c1' },
+  { name: '粉色', color: '#e83e8c' },
+  { name: '灰色', color: '#6c757d' },
 ];
 
 export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
@@ -28,6 +28,7 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
   currentText = '',
   onTextChange,
   cursorPosition = 0,
+  onAddNewBlock,
 }) => {
 
   const [showColorPanel, setShowColorPanel] = useState(false);
@@ -229,7 +230,7 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
     // 使用封闭的颜色标记语法：[文本](color:颜色值)
     if (!color.isDefault) {
       // 插入颜色标记，光标放在方括号内
-      const colorMarker = `[](color:${color.value})`;
+      const colorMarker = `[](color:${color.color})`;
       const newText = beforeCursor + colorMarker + afterCursor;
       const newCursorPosition = cursorPosition + 1; // 光标放在第一个方括号内
       
@@ -259,7 +260,7 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
             {COLORS.map((color, index) => (
               <TouchableOpacity 
                 key={index}
-                style={[styles.colorButton, { backgroundColor: color.value }]}
+                style={[styles.colorButton, { backgroundColor: color.color }]}
                 onPress={() => handleColorSelect(color)}
               />
             ))}
@@ -277,6 +278,17 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
         nestedScrollEnabled={false}
         keyboardDismissMode="none"
       >
+        {/* Plus按钮 - 添加新block */}
+        <TouchableOpacity 
+          style={[styles.button, styles.plusButton]} 
+          onPress={onAddNewBlock}
+        >
+          <FontAwesome5 name="plus" size={16} color="#007bff" iconStyle="solid" />
+        </TouchableOpacity>
+
+        {/* 分隔线 */}
+        <View style={styles.separator} />
+
         {/* 标题按钮 */}
         <TouchableOpacity 
           style={styles.button} 
@@ -353,7 +365,7 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
           ]} 
           onPress={handleColorButtonPress}
         >
-          <View style={[styles.colorIndicator, { backgroundColor: selectedColor.value }]} />
+          <View style={[styles.colorIndicator, { backgroundColor: selectedColor.color }]} />
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -440,6 +452,10 @@ const styles = StyleSheet.create({
   },
   activeButton: {
     backgroundColor: '#e9ecef',
+    borderColor: '#007bff',
+  },
+  plusButton: {
+    backgroundColor: '#f0f8ff',
     borderColor: '#007bff',
   },
   listText: {

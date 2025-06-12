@@ -1,6 +1,6 @@
 // @ts-ignore
 import SQLite from 'react-native-sqlite-storage';
-import { IdeaRecord, NewIdea, UpdateIdea } from '../Types';
+import { IdeaRecord, NewIdea, UpdateIdea, BlockRecord, NewBlock, UpdateBlock, BlockType } from '../Types';
 
 // 启用Promise API
 SQLite.enablePromise(true);
@@ -11,13 +11,14 @@ class IdeaDatabase {
   private isInitialized = false;
   
   // 当前数据库版本
-  private static readonly CURRENT_VERSION = 4;
+  private static readonly CURRENT_VERSION = 5;
   
   // 数据库名称
   private static readonly DATABASE_NAME = 'InspiNote.db';
 
   // 初始化数据库
   async initialize(): Promise<void> {
+    console.log('initialize');
     if (this.isInitialized) return;
 
     try {
@@ -38,11 +39,13 @@ class IdeaDatabase {
 
   // 检查数据库版本并执行迁移
   private async checkAndMigrate(): Promise<void> {
+    console.log('checkAndMigrate');
     if (!this.db) throw new Error('Database not initialized');
 
     try {
       // 获取当前数据库版本
       const currentVersion = await this.getDatabaseVersion();
+      console.log('currentVersion', currentVersion);
 
       if (currentVersion < IdeaDatabase.CURRENT_VERSION) {
         await this.performMigration(currentVersion, IdeaDatabase.CURRENT_VERSION);
@@ -109,6 +112,10 @@ class IdeaDatabase {
       
       case 4:
         await this.migrateToVersion4();
+        break;
+      
+      case 5:
+        await this.migrateToVersion5();
         break;
       
       default:
@@ -220,6 +227,50 @@ class IdeaDatabase {
       console.log('✅ Completed column added successfully');
     } catch (error) {
       console.error('❌ Error in version 4 migration:', error);
+      throw error;
+    }
+  }
+
+  // 迁移到版本5：创建blocks表
+  private async migrateToVersion5(): Promise<void> {
+    console.log('📋 Creating blocks table for version 5...');
+    
+    const createBlocksTable = `
+      CREATE TABLE IF NOT EXISTS blocks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        idea_id INTEGER NOT NULL,
+        block_id TEXT NOT NULL,
+        type TEXT NOT NULL,
+        content TEXT DEFAULT '',
+        order_index INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (idea_id) REFERENCES ideas(id) ON DELETE CASCADE,
+        UNIQUE(idea_id, block_id)
+      );
+    `;
+
+    // 创建索引以提高查询性能
+    const createIdeaIdIndex = `
+      CREATE INDEX IF NOT EXISTS idx_blocks_idea_id ON blocks(idea_id);
+    `;
+
+    const createOrderIndex = `
+      CREATE INDEX IF NOT EXISTS idx_blocks_order ON blocks(idea_id, order_index);
+    `;
+
+    try {
+      await this.db.executeSql(createBlocksTable);
+      console.log('✅ Blocks table created');
+
+      await this.db.executeSql(createIdeaIdIndex);
+      console.log('✅ Blocks idea_id index created');
+
+      await this.db.executeSql(createOrderIndex);
+      console.log('✅ Blocks order index created');
+
+    } catch (error) {
+      console.error('❌ Error in version 5 migration:', error);
       throw error;
     }
   }
@@ -596,6 +647,227 @@ class IdeaDatabase {
   // 生成格式化日期 (YYYYMMDD)
   static formatDateToYYYYMMDD(dateString: string): string {
     return dateString.replace(/-/g, '');
+  }
+
+  // ========================= Block 操作方法 =========================
+
+  // 解析Block查询结果的辅助方法
+  private parseBlockQueryResult(result: any): BlockRecord[] {
+    const blocks: BlockRecord[] = [];
+    for (let i = 0; i < result[0].rows.length; i++) {
+      blocks.push(result[0].rows.item(i));
+    }
+    return blocks;
+  }
+
+  // 获取指定idea的所有blocks
+  async getBlocksByIdeaId(ideaId: number): Promise<BlockRecord[]> {
+    console.log(`🗄️ [DB] getBlocksByIdeaId called for idea ${ideaId}`);
+    await this.ensureInitialized();
+
+    const selectQuery = `
+      SELECT * FROM blocks 
+      WHERE idea_id = ? 
+      ORDER BY order_index ASC, created_at ASC;
+    `;
+
+    try {
+      const result = await this.db.executeSql(selectQuery, [ideaId]);
+      const blocks = this.parseBlockQueryResult(result);
+      console.log(`🗄️ [DB] Found ${blocks.length} blocks for idea ${ideaId}`);
+      return blocks;
+    } catch (error) {
+      console.error('❌ Error fetching blocks by idea ID:', error);
+      throw new Error('加载Block失败');
+    }
+  }
+
+  // 插入新block
+  async addBlock(block: NewBlock): Promise<number> {
+    await this.ensureInitialized();
+
+    const insertQuery = `
+      INSERT INTO blocks (idea_id, block_id, type, content, order_index)
+      VALUES (?, ?, ?, ?, ?);
+    `;
+
+    try {
+      const result = await this.db.executeSql(insertQuery, [
+        block.idea_id,
+        block.block_id,
+        block.type,
+        block.content,
+        block.order_index,
+      ]);
+      
+      const insertId = result[0].insertId;
+      return insertId;
+    } catch (error) {
+      console.error('❌ Error adding block:', error);
+      throw new Error('保存Block失败');
+    }
+  }
+
+  // 更新block
+  async updateBlock(ideaId: number, blockId: string, updates: UpdateBlock): Promise<void> {
+    await this.ensureInitialized();
+
+    const fields = [];
+    const values = [];
+
+    if (updates.type !== undefined) {
+      fields.push('type = ?');
+      values.push(updates.type);
+    }
+    if (updates.content !== undefined) {
+      fields.push('content = ?');
+      values.push(updates.content);
+    }
+    if (updates.order_index !== undefined) {
+      fields.push('order_index = ?');
+      values.push(updates.order_index);
+    }
+
+    if (fields.length === 0) return;
+
+    fields.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(ideaId, blockId);
+
+    const updateQuery = `
+      UPDATE blocks 
+      SET ${fields.join(', ')}
+      WHERE idea_id = ? AND block_id = ?;
+    `;
+
+    try {
+      const result = await this.db.executeSql(updateQuery, values);
+      if (result[0].rowsAffected === 0) {
+        console.warn('⚠️ No block found with idea_id:', ideaId, 'block_id:', blockId);
+      }
+    } catch (error) {
+      console.error('❌ Error updating block:', error);
+      throw new Error('更新Block失败');
+    }
+  }
+
+  // 删除block
+  async deleteBlock(ideaId: number, blockId: string): Promise<void> {
+    console.log(`🗄️ [DB] deleteBlock called for idea ${ideaId}, block ${blockId}`);
+    await this.ensureInitialized();
+
+    const deleteQuery = 'DELETE FROM blocks WHERE idea_id = ? AND block_id = ?;';
+
+    try {
+      const result = await this.db.executeSql(deleteQuery, [ideaId, blockId]);
+      console.log(`🗄️ [DB] Delete result for block ${blockId}: rowsAffected=${result[0].rowsAffected}`);
+      if (result[0].rowsAffected === 0) {
+        console.warn('⚠️ No block found with idea_id:', ideaId, 'block_id:', blockId);
+      } else {
+        console.log(`🗄️ [DB] Successfully deleted block ${blockId}`);
+      }
+    } catch (error) {
+      console.error('❌ Error deleting block:', error);
+      throw new Error('删除Block失败');
+    }
+  }
+
+  // 批量保存blocks（用于自动保存）
+  async saveDirtyBlocks(ideaId: number, blocks: { blockId: string; type: BlockType; content: string; orderIndex: number }[]): Promise<void> {
+    console.log(`🗄️ [DB] saveDirtyBlocks called for idea ${ideaId} with ${blocks.length} blocks`);
+    console.log(`🗄️ [DB] Blocks to save:`, blocks.map(b => ({
+      blockId: b.blockId,
+      content: b.content.substring(0, 20) + (b.content.length > 20 ? '...' : ''),
+      type: b.type,
+      orderIndex: b.orderIndex
+    })));
+    
+    await this.ensureInitialized();
+
+    if (blocks.length === 0) {
+      console.log(`🗄️ [DB] No blocks to save, returning early`);
+      return;
+    }
+
+    try {
+      // 开始事务
+      console.log(`🗄️ [DB] Starting transaction`);
+      await this.db.executeSql('BEGIN TRANSACTION;');
+
+      for (const block of blocks) {
+        console.log(`🗄️ [DB] Processing block ${block.blockId}: "${block.content.substring(0, 30)}..."`);
+        
+        // 先尝试更新，如果不存在则插入
+        const updateQuery = `
+          UPDATE blocks 
+          SET type = ?, content = ?, order_index = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE idea_id = ? AND block_id = ?;
+        `;
+
+        const updateResult = await this.db.executeSql(updateQuery, [
+          block.type,
+          block.content,
+          block.orderIndex,
+          ideaId,
+          block.blockId,
+        ]);
+
+        console.log(`🗄️ [DB] Update result for block ${block.blockId}: rowsAffected=${updateResult[0].rowsAffected}`);
+
+        // 如果更新没有影响任何行，说明记录不存在，需要插入
+        if (updateResult[0].rowsAffected === 0) {
+          console.log(`🗄️ [DB] Block ${block.blockId} not found, inserting new record`);
+          const insertQuery = `
+            INSERT INTO blocks (idea_id, block_id, type, content, order_index)
+            VALUES (?, ?, ?, ?, ?);
+          `;
+
+          const insertResult = await this.db.executeSql(insertQuery, [
+            ideaId,
+            block.blockId,
+            block.type,
+            block.content,
+            block.orderIndex,
+          ]);
+          console.log(`🗄️ [DB] Insert result for block ${block.blockId}: insertId=${insertResult[0].insertId}`);
+        } else {
+          console.log(`🗄️ [DB] Block ${block.blockId} updated successfully`);
+        }
+      }
+
+      // 提交事务
+      console.log(`🗄️ [DB] Committing transaction`);
+      await this.db.executeSql('COMMIT;');
+      console.log(`✅ Successfully saved ${blocks.length} blocks for idea ${ideaId}`);
+    } catch (error) {
+      // 回滚事务
+      console.log(`🗄️ [DB] Error occurred, rolling back transaction`);
+      try {
+        await this.db.executeSql('ROLLBACK;');
+        console.log(`🗄️ [DB] Transaction rolled back successfully`);
+      } catch (rollbackError) {
+        console.error('❌ Error rolling back transaction:', rollbackError);
+      }
+      
+      console.error('❌ Error saving dirty blocks:', error);
+      throw new Error('批量保存Block失败');
+    }
+  }
+
+  // 删除指定idea的所有blocks
+  async deleteBlocksByIdeaId(ideaId: number): Promise<number> {
+    await this.ensureInitialized();
+
+    const deleteQuery = 'DELETE FROM blocks WHERE idea_id = ?;';
+
+    try {
+      const result = await this.db.executeSql(deleteQuery, [ideaId]);
+      const deletedCount = result[0].rowsAffected;
+      console.log(`🗑️ Deleted ${deletedCount} blocks for idea ${ideaId}`);
+      return deletedCount;
+    } catch (error) {
+      console.error('❌ Error deleting blocks by idea ID:', error);
+      throw new Error('删除idea的所有Block失败');
+    }
   }
 }
 

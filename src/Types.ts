@@ -51,6 +51,35 @@ export interface Block {
   cursorPosition?: number;
   created_at?: string;
   updated_at?: string;
+  isDirty?: boolean; // 运行时标记，表示是否需要保存
+}
+
+// 数据库Block记录接口
+export interface BlockRecord {
+  id: number;
+  idea_id: number;
+  block_id: string;
+  type: BlockType;
+  content: string;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// 新建Block接口
+export interface NewBlock {
+  idea_id: number;
+  block_id: string;
+  type: BlockType;
+  content: string;
+  order_index: number;
+}
+
+// 更新Block接口
+export interface UpdateBlock {
+  type?: BlockType;
+  content?: string;
+  order_index?: number;
 }
 
 // Block配置接口
