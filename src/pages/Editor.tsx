@@ -1,8 +1,9 @@
 import { Block, BlockType, NavigationProps, RootStackParamList, BlockRecord } from "../Types";
 import { useState, useEffect, useRef } from "react";
-import { FlatList, StyleSheet, Text, TouchableWithoutFeedback, View, Dimensions, StatusBar, Platform, TouchableOpacity, KeyboardAvoidingView, Keyboard, Alert, TextInput } from "react-native";
+import { FlatList, StyleSheet, Text, TouchableWithoutFeedback, View, Dimensions, StatusBar, Platform, TouchableOpacity, KeyboardAvoidingView, Keyboard, Alert, TextInput, Image } from "react-native";
 import Markdown from "react-native-markdown-display";
 import { KeyboardToolbar } from '../components/KeyboardToolbar'
+import { ImageBlock } from '../components/ImageBlock'
 import { ideaDB } from '../utils/IdeaDatabase';
 import React from "react";
 
@@ -199,7 +200,7 @@ export default function Editor({ navigation, route }: EditorProps) {
     
     const newBlock: Block = {
       id: Date.now().toString(),
-      type: BlockType.PARAGRAPH,
+      type: BlockType.MARKDOWN,
       content: newContent,
       isActive: true,
       cursorPosition: newCursorPosition,
@@ -236,6 +237,38 @@ export default function Editor({ navigation, route }: EditorProps) {
     createNewBlockAfterCurrent();
   };
 
+  // 处理图片选择
+  const handleImageSelect = (imageUri: string) => {
+    const activeBlock = getActiveBlock();
+    if (activeBlock) {
+      setBlocks(prev => prev.map(block => 
+        block.id === activeBlock.id ? { 
+          ...block, 
+          type: BlockType.IMAGE, 
+          content: imageUri,
+          isDirty: true
+        } : block
+      ));
+      console.log('图片已设置到当前block:', imageUri);
+    } else {
+      // 如果没有活跃block，创建新的图片block
+      const newBlock: Block = {
+        id: Date.now().toString(),
+        type: BlockType.IMAGE,
+        content: imageUri,
+        isActive: false,
+        cursorPosition: 0,
+        isDirty: true,
+      };
+      
+      setBlocks(prev => [
+        ...prev.map(block => ({ ...block, isActive: false })),
+        newBlock
+      ]);
+      console.log('已创建新的图片block:', imageUri);
+    }
+  };
+
   // 立即保存函数 - 用于关键操作
   const saveImmediately = async () => {
     // 清除任何待执行的自动保存
@@ -266,7 +299,7 @@ export default function Editor({ navigation, route }: EditorProps) {
         // 如果没有数据，创建一个空的paragraph block
         const defaultBlocks = [{
           id: Date.now().toString(),
-          type: BlockType.PARAGRAPH,
+          type: BlockType.MARKDOWN,
           content: '',
           isActive: true,
           cursorPosition: 0,
@@ -310,7 +343,7 @@ export default function Editor({ navigation, route }: EditorProps) {
       // 创建一个空的block作为备选
       const fallbackBlocks = [{
         id: Date.now().toString(),
-        type: BlockType.PARAGRAPH,
+        type: BlockType.MARKDOWN,
         content: '',
         isActive: true,
         cursorPosition: 0,
@@ -407,73 +440,104 @@ export default function Editor({ navigation, route }: EditorProps) {
     }
   };
 
-  const renderBlock = ({ item }: { item: Block }) => {
-    return (
-      item.isActive ? (
-        <TextInput
-          ref={(ref) => setTextInputRef(item.id, ref)}
-          value={item.content}
-          selection={ item.cursorPosition ? { start: item.cursorPosition, end: item.cursorPosition } : undefined }
-          onChangeText={text => {
-            // Filter out newline characters to prevent unwanted line breaks from Enter key
-            const filteredText = text.replace(/\n/g, '');
-            console.log(`✏️ Text changed for block ${item.id}: "${filteredText}" (isDirty: true)`);
-            setBlocks(prev => prev.map(block => block.id === item.id ? { ...block, content: filteredText, isDirty: true } : block));
-          }}
-          onSubmitEditing={() => {
-            console.log('onSubmitEditing');
-            // 使用通用的创建新block函数
-            createNewBlockAfterCurrent(item.content);
-          }}
-          onKeyPress={(event) => {
-            // 处理backspace按键
-            if (event.nativeEvent.key === 'Backspace') {
-              handleBackspacePress(item);
+  // 渲染MARKDOWN类型的block
+  const renderMarkdownBlock = (item: Block) => {
+    return item.isActive ? (
+      <TextInput
+        ref={(ref) => setTextInputRef(item.id, ref)}
+        value={item.content}
+        selection={item.cursorPosition ? { start: item.cursorPosition, end: item.cursorPosition } : undefined}
+        onChangeText={text => {
+          // Filter out newline characters to prevent unwanted line breaks from Enter key
+          const filteredText = text.replace(/\n/g, '');
+          console.log(`✏️ Text changed for block ${item.id}: "${filteredText}" (isDirty: true)`);
+          setBlocks(prev => prev.map(block => block.id === item.id ? { ...block, content: filteredText, isDirty: true } : block));
+        }}
+        onSubmitEditing={() => {
+          console.log('onSubmitEditing');
+          // 使用通用的创建新block函数
+          createNewBlockAfterCurrent(item.content);
+        }}
+        onKeyPress={(event) => {
+          // 处理backspace按键
+          if (event.nativeEvent.key === 'Backspace') {
+            handleBackspacePress(item);
+          }
+        }}
+        returnKeyType="done"
+        submitBehavior="submit"
+        onSelectionChange={(event) => {
+          const { start } = event.nativeEvent.selection;
+          setBlocks(prev => prev.map(block => 
+            block.id === item.id ? { ...block, cursorPosition: start } : block
+          ));
+        }}
+        onFocus={() => {
+          setBlocks(prev => prev.map(block => ({ ...block, isActive: block.id === item.id })));
+        }}
+        onBlur={() => {
+          setBlocks(prev => prev.map(block => {
+            if (block.id === item.id) {
+              return { ...block, isActive: false };
             }
-          }}
-          // blurOnSubmit={false}
-          returnKeyType="done"
-          submitBehavior="submit"
-          onSelectionChange={(event) => {
-            const { start } = event.nativeEvent.selection;
-            setBlocks(prev => prev.map(block => 
-              block.id === item.id ? { ...block, cursorPosition: start } : block
-            ));
-          }}
-          onFocus={() => {
-            setBlocks(prev => prev.map(block => ({ ...block, isActive: block.id === item.id })));
-          }}
-          onBlur={() => {
-            setBlocks(prev => prev.map(block => {
-              if (block.id === item.id) {
-                return { ...block, isActive: false };
-              }
-              return block;
-            }));
-            // 延迟执行清理，给其他操作时间完成
-            setTimeout(() => {
-              cleanupEmptyBlocks();
-            }, 200);
-          }}
-          autoFocus={item.isActive}
-          style={styles.blockText}
-          multiline={true}
-        />
-      ) : (
-        <TouchableOpacity 
-          style={styles.markdownBlock}
-          onPress={() => {
-            setBlocks(prev => prev.map(block => ({ ...block, isActive: block.id === item.id })));
-            focusBlock(item.id);
-          }}
-        >
-            <Markdown style={markdownStyles} rules={markdownRules}>
-              {item.content}
-            </Markdown>
-        </TouchableOpacity>
-      )
+            return block;
+          }));
+          // 延迟执行清理，给其他操作时间完成
+          setTimeout(() => {
+            cleanupEmptyBlocks();
+          }, 200);
+        }}
+        autoFocus={item.isActive}
+        style={styles.blockText}
+        multiline={true}
+      />
+    ) : (
+      <TouchableOpacity 
+        style={styles.markdownBlock}
+        onPress={() => {
+          setBlocks(prev => prev.map(block => ({ ...block, isActive: block.id === item.id })));
+          focusBlock(item.id);
+        }}
+      >
+        <Markdown style={markdownStyles} rules={markdownRules}>
+          {item.content}
+        </Markdown>
+      </TouchableOpacity>
     );
-  }
+  };
+
+  // 渲染IMAGE类型的block
+  const renderImageBlock = (item: Block) => {
+    const handleDeleteImage = () => {
+      setBlocks(prev => prev.map(block => 
+        block.id === item.id ? { 
+          ...block, 
+          type: BlockType.MARKDOWN, 
+          content: '', 
+          isDirty: true 
+        } : block
+      ));
+    };
+
+    return (
+      <ImageBlock 
+        uri={item.content} 
+        onDelete={handleDeleteImage} 
+      />
+    );
+  };
+
+  // 主渲染函数，根据BlockType分发到不同的渲染函数
+  const renderBlock = ({ item }: { item: Block }) => {
+    switch (item.type) {
+      case BlockType.MARKDOWN:
+        return renderMarkdownBlock(item);
+      case BlockType.IMAGE:
+        return renderImageBlock(item);
+      default:
+        return renderMarkdownBlock(item); // 默认使用markdown渲染
+    }
+  };
 
 
   // 渲染列表底部的空白区域 - 占据剩余所有空间
@@ -486,15 +550,15 @@ export default function Editor({ navigation, route }: EditorProps) {
   };
   
   const isEmptyBlock = (block: Block) => {
-    return block.type === BlockType.PARAGRAPH && block.content === '';
+    return block.type === BlockType.MARKDOWN && block.content === '';
   }
 
   const handleEmptyAreaPress = () => {
     setBlocks(prev => {
-      if (prev.length === 0 || prev[prev.length - 1].type !== BlockType.PARAGRAPH || !isEmptyBlock(prev[prev.length - 1])) {
+      if (prev.length === 0 || prev[prev.length - 1].type !== BlockType.MARKDOWN || !isEmptyBlock(prev[prev.length - 1])) {
         return [...prev.map(block => ({ ...block, isActive: false })), {
           id: Date.now().toString(), // 使用时间戳生成唯一ID
-          type: BlockType.PARAGRAPH,
+          type: BlockType.MARKDOWN,
           content: '',
           isActive: true,
           cursorPosition: 0,
@@ -507,7 +571,7 @@ export default function Editor({ navigation, route }: EditorProps) {
 
   const getCurrentBlockType = () => {
     const activeBlock = blocks.find(block => block.isActive);
-    return activeBlock ? activeBlock.type : BlockType.PARAGRAPH;
+    return activeBlock ? activeBlock.type : BlockType.MARKDOWN;
   }
 
   // 优化的列表前缀检测函数
@@ -617,7 +681,7 @@ export default function Editor({ navigation, route }: EditorProps) {
         if (lastBlock.content.trim() !== '') {
           nonEmptyBlocks.push({
             id: Date.now().toString(),
-            type: BlockType.PARAGRAPH,
+            type: BlockType.MARKDOWN,
             content: '',
             isActive: false,
             cursorPosition: 0,
@@ -682,6 +746,7 @@ export default function Editor({ navigation, route }: EditorProps) {
             onTextChange={updateActiveBlockText}
             cursorPosition={getActiveBlock()?.cursorPosition || 0}
             onAddNewBlock={addNewBlockAfterCurrent}
+            onImageSelect={handleImageSelect}
           />
         )}
       </KeyboardAvoidingView>
@@ -852,4 +917,5 @@ const styles = StyleSheet.create({
     color: '#666666',
     textAlign: 'center' as const,
   },
+
 });

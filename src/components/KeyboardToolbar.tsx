@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Alert, Platform, PermissionsAndroid } from 'react-native';
 import FontAwesome5 from '@react-native-vector-icons/fontawesome5';
 import Feather from '@react-native-vector-icons/feather';
+import { launchImageLibrary, ImagePickerResponse, MediaType } from 'react-native-image-picker';
+import RNFS from 'react-native-fs';
 
 export interface KeyboardToolbarProps {
   textInputRef: TextInput | null; // TextInput 引用
@@ -9,6 +11,7 @@ export interface KeyboardToolbarProps {
   onTextChange?: (text: string, newCursorPosition?: number) => void; // 文本变化回调，包含新光标位置
   cursorPosition?: number; // 当前光标位置
   onAddNewBlock?: () => void; // 添加新block的回调
+  onImageSelect?: (imageUri: string) => void; // 图片选择回调
 }
 
 // 常用颜色配置
@@ -29,6 +32,7 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
   onTextChange,
   cursorPosition = 0,
   onAddNewBlock,
+  onImageSelect,
 }) => {
 
   const [showColorPanel, setShowColorPanel] = useState(false);
@@ -245,6 +249,110 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
     });
   };
 
+  // 请求相册权限
+  const requestStoragePermission = async (): Promise<boolean> => {
+    if (Platform.OS === 'ios') {
+      return true; // iOS通过Info.plist配置权限
+    }
+
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+        {
+          title: '相册访问权限',
+          message: '需要访问您的相册来选择图片',
+          buttonNeutral: '稍后询问',
+          buttonNegative: '取消',
+          buttonPositive: '确定',
+        },
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    } catch (err) {
+      console.warn('权限请求失败:', err);
+      return false;
+    }
+  };
+
+  // 复制图片到本地存储
+  const copyImageToLocalStorage = async (sourceUri: string): Promise<string> => {
+    try {
+      // 创建图片存储目录
+      const imageDir = `${RNFS.DocumentDirectoryPath}/images`;
+      await RNFS.mkdir(imageDir);
+
+      // 生成唯一文件名
+      const fileName = `image_${Date.now()}.jpg`;
+      const destPath = `${imageDir}/${fileName}`;
+
+      // 复制文件
+      await RNFS.copyFile(sourceUri, destPath);
+      
+      console.log('图片已复制到本地:', destPath);
+      return `file://${destPath}`;
+    } catch (error) {
+      console.error('复制图片失败:', error);
+      throw new Error('保存图片失败');
+    }
+  };
+
+  // 处理图片选择
+  const handleImageSelect = async () => {
+    try {
+      // 检查权限
+      const hasPermission = await requestStoragePermission();
+      if (!hasPermission) {
+        Alert.alert('权限不足', '需要相册访问权限才能选择图片');
+        return;
+      }
+
+      // 配置图片选择器选项
+      const options = {
+        mediaType: 'photo' as MediaType,
+        includeBase64: false,
+        maxHeight: 2000,
+        maxWidth: 2000,
+        quality: 0.8 as const,
+      };
+
+      // 启动图片选择器
+      launchImageLibrary(options, async (response: ImagePickerResponse) => {
+        if (response.didCancel) {
+          console.log('用户取消了图片选择');
+          return;
+        }
+
+        if (response.errorMessage) {
+          console.error('图片选择错误:', response.errorMessage);
+          Alert.alert('选择失败', '图片选择失败，请重试');
+          return;
+        }
+
+        if (response.assets && response.assets.length > 0) {
+          const selectedImage = response.assets[0];
+          if (selectedImage.uri) {
+            try {
+              // 复制图片到本地存储
+              const localImageUri = await copyImageToLocalStorage(selectedImage.uri);
+              
+              // 调用回调函数，通知父组件
+              if (onImageSelect) {
+                onImageSelect(localImageUri);
+              }
+              
+              console.log('图片选择成功:', localImageUri);
+            } catch (error) {
+              console.error('处理图片失败:', error);
+              Alert.alert('处理失败', '图片处理失败，请重试');
+            }
+          }
+        }
+      });
+    } catch (error) {
+      console.error('启动图片选择器失败:', error);
+      Alert.alert('选择失败', '无法启动图片选择器');
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* 颜色面板 */}
@@ -366,6 +474,17 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
           onPress={handleColorButtonPress}
         >
           <View style={[styles.colorIndicator, { backgroundColor: selectedColor.color }]} />
+        </TouchableOpacity>
+
+        {/* 分隔线 */}
+        <View style={styles.separator} />
+
+        {/* 图片选择按钮 */}
+        <TouchableOpacity 
+          style={styles.button} 
+          onPress={handleImageSelect}
+        >
+          <FontAwesome5 name="image" size={16} color="#17a2b8" iconStyle="solid" />
         </TouchableOpacity>
       </ScrollView>
     </View>

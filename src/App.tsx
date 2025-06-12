@@ -12,6 +12,7 @@ import Search from './pages/Search';
 // import BlockEditorPage from './pages/BlockEditorPage';
 import KeyboardTestPage from './pages/KeyboardTestPage';
 import EditorPage from './pages/Editor';
+import ImageViewerPage from './pages/ImageViewer';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -58,6 +59,16 @@ const App = () => {
               name="Editor"
               component={EditorPage}
               options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ImageViewer"
+              component={ImageViewerPage}
+              options={{ 
+                headerShown: false,
+                presentation: 'modal',
+                gestureEnabled: true,
+                animationTypeForReplace: 'pop',
+              }}
             />
           </Stack.Navigator>
         </NavigationContainer>
