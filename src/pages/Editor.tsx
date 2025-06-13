@@ -16,7 +16,6 @@ export default function Editor({ navigation, route }: EditorProps) {
   const [originalBlockIds, setOriginalBlockIds] = useState<Set<string>>(new Set()); // 跟踪从数据库加载的原始block IDs
   const [screenHeight, setScreenHeight] = useState(Dimensions.get('window').height);
   const [showKeyboardToolbar, setShowKeyboardToolbar] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   
   // 创建 ref map 来持有所有 TextInput 的 ref

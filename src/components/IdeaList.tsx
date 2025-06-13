@@ -610,7 +610,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#343a40',
     paddingVertical: 4,
-    minHeight: 24,
+    height: 30,
   },
   modalOverlay: {
     flex: 1,
