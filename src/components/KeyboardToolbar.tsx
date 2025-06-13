@@ -12,6 +12,8 @@ export interface KeyboardToolbarProps {
   cursorPosition?: number; // 当前光标位置
   onAddNewBlock?: () => void; // 添加新block的回调
   onImageSelect?: (imageUri: string) => void; // 图片选择回调
+  onBlockColorChange?: (color: string) => void; // 添加block颜色变化回调
+  currentBlockColor?: string; // 当前block的颜色
 }
 
 // 常用颜色配置
@@ -33,10 +35,19 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
   cursorPosition = 0,
   onAddNewBlock,
   onImageSelect,
+  onBlockColorChange,
+  currentBlockColor,
 }) => {
 
   const [showColorPanel, setShowColorPanel] = useState(false);
-  const [selectedColor, setSelectedColor] = useState(COLORS[0]); // 默认黑色
+  
+  // 根据当前block颜色获取选中的颜色配置
+  const getSelectedColor = () => {
+    if (!currentBlockColor) return COLORS[0]; // 默认黑色
+    return COLORS.find(color => color.color === currentBlockColor) || COLORS[0];
+  };
+  
+  const selectedColor = getSelectedColor();
 
   const handleHeaderPress = (level: number) => {
     if (!textInputRef || !onTextChange) return;
@@ -191,25 +202,11 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
   };
 
   const handleColorSelect = (color: typeof COLORS[0]) => {
-    if (!textInputRef || !onTextChange) return;
+    setShowColorPanel(false);
 
-    setSelectedColor(color);
-
-    const beforeCursor = currentText.substring(0, cursorPosition);
-    const afterCursor = currentText.substring(cursorPosition);
-    
-    // 使用封闭的颜色标记语法：[文本](color:颜色值)
-    if (!color.isDefault) {
-      // 插入颜色标记，光标放在方括号内
-      const colorMarker = `[](color:${color.color})`;
-      const newText = beforeCursor + colorMarker + afterCursor;
-      const newCursorPosition = cursorPosition + 1; // 光标放在第一个方括号内
-      
-      onTextChange(newText, newCursorPosition);
+    if (onBlockColorChange) {
+      onBlockColorChange(color.color);
     }
-    // 如果选择黑色（默认色），不添加任何标记
-
-
   };
 
   // 请求相册权限

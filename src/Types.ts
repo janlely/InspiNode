@@ -47,6 +47,7 @@ export interface Block {
   created_at?: string;
   updated_at?: string;
   isDirty?: boolean; // 运行时标记，表示是否需要保存
+  color?: string; // 添加颜色属性
 }
 
 // 数据库Block记录接口
@@ -59,6 +60,7 @@ export interface BlockRecord {
   order_index: number;
   created_at: string;
   updated_at: string;
+  color?: string; // 添加颜色属性
 }
 
 // 新建Block接口
@@ -68,6 +70,7 @@ export interface NewBlock {
   type: BlockType;
   content: string;
   order_index: number;
+  color?: string; // 添加颜色属性
 }
 
 // 更新Block接口
@@ -75,6 +78,7 @@ export interface UpdateBlock {
   type?: BlockType;
   content?: string;
   order_index?: number;
+  color?: string; // 添加颜色属性
 }
 
 // Block配置接口

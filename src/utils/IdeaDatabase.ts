@@ -11,7 +11,7 @@ class IdeaDatabase {
   private isInitialized = false;
   
   // 当前数据库版本
-  private static readonly CURRENT_VERSION = 5;
+  private static readonly CURRENT_VERSION = 6;
   
   // 数据库名称
   private static readonly DATABASE_NAME = 'InspiNote.db';
@@ -61,7 +61,8 @@ class IdeaDatabase {
     try {
       const result = await this.db.executeSql('PRAGMA user_version;');
       const version = result[0].rows.item(0).user_version;
-      return version;
+      console.log('user_version', version);
+      return version
     } catch (error) {
       console.error('❌ Error getting database version:', error);
       return 0; // 如果获取失败，默认为版本0
@@ -108,6 +109,10 @@ class IdeaDatabase {
       
       case 5:
         await this.migrateToVersion5();
+        break;
+      
+      case 6:
+        await this.migrateToVersion6();
         break;
       
       default:
@@ -236,6 +241,20 @@ class IdeaDatabase {
       await this.db.executeSql(createBlocksOrderIndex);
     } catch (error) {
       console.error('❌ Error in version 5 migration:', error);
+      throw error;
+    }
+  }
+
+  // 迁移到版本6：为blocks表添加color字段
+  private async migrateToVersion6(): Promise<void> {
+    const addColorColumn = `
+      ALTER TABLE blocks ADD COLUMN color TEXT DEFAULT NULL;
+    `;
+    
+    try {
+      await this.db.executeSql(addColorColumn);
+    } catch (error) {
+      console.error('❌ Error in version 6 migration:', error);
       throw error;
     }
   }
@@ -644,8 +663,8 @@ class IdeaDatabase {
     await this.ensureInitialized();
 
     const insertQuery = `
-      INSERT INTO blocks (idea_id, block_id, type, content, order_index)
-      VALUES (?, ?, ?, ?, ?);
+      INSERT INTO blocks (idea_id, block_id, type, content, order_index, color)
+      VALUES (?, ?, ?, ?, ?, ?);
     `;
 
     try {
@@ -655,6 +674,7 @@ class IdeaDatabase {
         block.type,
         block.content,
         block.order_index,
+        block.color || null,
       ]);
       
       const insertId = result[0].insertId;
@@ -683,6 +703,10 @@ class IdeaDatabase {
     if (updates.order_index !== undefined) {
       fields.push('order_index = ?');
       values.push(updates.order_index);
+    }
+    if (updates.color !== undefined) {
+      fields.push('color = ?');
+      values.push(updates.color);
     }
 
     if (fields.length === 0) return;
@@ -725,7 +749,7 @@ class IdeaDatabase {
   }
 
   // 批量保存blocks（用于自动保存）
-  async saveDirtyBlocks(ideaId: number, blocks: { blockId: string; type: BlockType; content: string; orderIndex: number }[]): Promise<void> {
+  async saveDirtyBlocks(ideaId: number, blocks: { blockId: string; type: BlockType; content: string; orderIndex: number; color?: string }[]): Promise<void> {
     await this.ensureInitialized();
 
     if (blocks.length === 0) {
@@ -740,7 +764,7 @@ class IdeaDatabase {
         // 先尝试更新，如果不存在则插入
         const updateQuery = `
           UPDATE blocks 
-          SET type = ?, content = ?, order_index = ?, updated_at = CURRENT_TIMESTAMP
+          SET type = ?, content = ?, order_index = ?, color = ?, updated_at = CURRENT_TIMESTAMP
           WHERE idea_id = ? AND block_id = ?;
         `;
 
@@ -748,6 +772,7 @@ class IdeaDatabase {
           block.type,
           block.content,
           block.orderIndex,
+          block.color || null,
           ideaId,
           block.blockId,
         ]);
@@ -755,8 +780,8 @@ class IdeaDatabase {
         // 如果更新没有影响任何行，说明记录不存在，需要插入
         if (updateResult[0].rowsAffected === 0) {
           const insertQuery = `
-            INSERT INTO blocks (idea_id, block_id, type, content, order_index)
-            VALUES (?, ?, ?, ?, ?);
+            INSERT INTO blocks (idea_id, block_id, type, content, order_index, color)
+            VALUES (?, ?, ?, ?, ?, ?);
           `;
 
           await this.db.executeSql(insertQuery, [
@@ -765,6 +790,7 @@ class IdeaDatabase {
             block.type,
             block.content,
             block.orderIndex,
+            block.color || null,
           ]);
         }
       }

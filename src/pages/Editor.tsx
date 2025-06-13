@@ -236,6 +236,23 @@ export default function Editor({ navigation, route }: EditorProps) {
     createNewBlockAfterCurrent();
   };
 
+  // 处理block颜色变化
+  const handleBlockColorChange = (color: string) => {
+    const activeBlock = getActiveBlock();
+    if (!activeBlock) return;
+
+    setBlocks(prev => prev.map(block => {
+      if (block.id === activeBlock.id) {
+        return {
+          ...block,
+          color: color === '#000000' ? undefined : color, // 黑色使用默认值
+          isDirty: true,
+        };
+      }
+      return block;
+    }));
+  };
+
   // 处理图片选择
   const handleImageSelect = (imageUri: string) => {
     const activeBlock = getActiveBlock();
@@ -310,6 +327,7 @@ export default function Editor({ navigation, route }: EditorProps) {
           isActive: false,
           cursorPosition: 0,
           isDirty: false,
+          color: record.color,
         }));
         
         setBlocks(uiBlocks);
@@ -355,6 +373,7 @@ export default function Editor({ navigation, route }: EditorProps) {
           type: block.type,
           content: block.content,
           orderIndex: blocksData.indexOf(block),
+          color: block.color,
         }));
       
       // 如果没有变更，直接返回
@@ -423,6 +442,53 @@ export default function Editor({ navigation, route }: EditorProps) {
 
   // 渲染MARKDOWN类型的block
   const renderMarkdownBlock = (item: Block) => {
+    // 根据block的颜色创建动态样式
+    const blockTextStyle = [
+      styles.blockText,
+      item.color && { color: item.color }
+    ];
+
+    // 为Markdown创建动态样式
+    const dynamicMarkdownStyles = {
+      ...markdownStyles,
+      body: {
+        ...markdownStyles.body,
+        color: item.color || markdownStyles.body.color
+      },
+      paragraph: {
+        ...markdownStyles.paragraph,
+        color: item.color || markdownStyles.paragraph.color
+      },
+      em: {
+        ...markdownStyles.em,
+        color: item.color || markdownStyles.em.color
+      },
+      strong: {
+        ...markdownStyles.strong,
+        color: item.color || markdownStyles.strong.color
+      },
+      heading1: {
+        ...markdownStyles.heading1,
+        color: item.color || markdownStyles.heading1.color
+      },
+      heading2: {
+        ...markdownStyles.heading2,
+        color: item.color || markdownStyles.heading2.color
+      },
+      heading3: {
+        ...markdownStyles.heading3,
+        color: item.color || markdownStyles.heading3.color
+      },
+      heading4: {
+        ...markdownStyles.heading4,
+        color: item.color || markdownStyles.heading4.color
+      },
+      heading5: {
+        ...markdownStyles.heading5,
+        color: item.color || markdownStyles.heading5.color
+      },
+    };
+
     return item.isActive ? (
       <TextInput
         ref={(ref) => setTextInputRef(item.id, ref)}
@@ -467,7 +533,7 @@ export default function Editor({ navigation, route }: EditorProps) {
           }, 200);
         }}
         autoFocus={item.isActive}
-        style={styles.blockText}
+        style={blockTextStyle}
         multiline={true}
       />
     ) : (
@@ -478,7 +544,7 @@ export default function Editor({ navigation, route }: EditorProps) {
           focusBlock(item.id);
         }}
       >
-        <Markdown style={markdownStyles} rules={markdownRules}>
+        <Markdown style={dynamicMarkdownStyles} >
           {item.content}
         </Markdown>
       </TouchableOpacity>
@@ -726,6 +792,8 @@ export default function Editor({ navigation, route }: EditorProps) {
             cursorPosition={getActiveBlock()?.cursorPosition || 0}
             onAddNewBlock={addNewBlockAfterCurrent}
             onImageSelect={handleImageSelect}
+            onBlockColorChange={handleBlockColorChange}
+            currentBlockColor={getActiveBlock()?.color}
           />
         )}
       </KeyboardAvoidingView>
@@ -801,8 +869,9 @@ const markdownRules = {
     // 检查是否是颜色链接语法
     if (node.attributes && node.attributes.href && node.attributes.href.startsWith('color:')) {
       const colorValue = node.attributes.href.substring(6); // 移除 'color:' 前缀
+      console.log('colorValue', colorValue);
       return (
-        <Text key={node.key} style={{ color: colorValue }}>
+        <Text key={node.key} style={{ color: 'red'}}>
           {children}
         </Text>
       );
