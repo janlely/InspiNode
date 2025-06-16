@@ -9,29 +9,13 @@ const resources = {
         loading: 'Loading...',
         close: 'Close',
         error: 'Error',
-        today: 'Today',
-        calendar: 'Calendar',
-        search: 'Search',
-        save: 'Save',
-        cancel: 'Cancel',
-        delete: 'Delete',
-        edit: 'Edit',
-        confirm: 'Confirm',
-        back: 'Back'
+        today: 'Today'
       },
 
       // Placeholders
       placeholders: {
         searchIdeas: 'Search ideas...',
-        enterContent: 'Please enter content...',
-        recordIdea: 'Record your thoughts...',
-        dateFormat: 'YYYY-MM-DD'
-      },
-
-      // Buttons and Labels
-      buttons: {
-        testButton: 'Test Button',
-        buttonClickCount: 'Button click count: {{count}}'
+        recordIdea: 'Record your thoughts...'
       },
 
       // Colors
@@ -66,27 +50,16 @@ const resources = {
         ],
         dayNames: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
         dayNamesShort: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-        monthFormat: 'MMMM yyyy',
-        loading: 'Loading...',
-        close: 'Close'
+        monthFormat: 'MMMM yyyy'
       },
 
       // Error Messages
       errors: {
         loadFailed: 'Load Failed',
         saveFailed: 'Save Failed',
-        searchFailed: 'Search Failed',
-        appInitFailed: 'App Initialization Failed',
-        loadIdeasFailed: 'Load Ideas Failed',
-        navigateDateFailed: 'Navigate Date Failed',
-        saveIdeaFailed: 'Save Idea Failed',
-        updateTodoFailed: 'Update TODO Status Failed',
-        updateCategoryFailed: 'Update Category Failed',
-        createIdeaFailed: 'Create Idea Failed',
         insufficientPermissions: 'Insufficient Permissions',
         imageSelectionFailed: 'Image Selection Failed',
         imageProcessingFailed: 'Image Processing Failed',
-        imagePickerFailed: 'Cannot Start Image Picker',
         imageLoadFailed: 'Image Load Failed',
         cannotLoadEditor: 'Cannot load editor content, please try again',
         cannotSaveEditor: 'Cannot save editor content, please check network connection',
@@ -103,12 +76,6 @@ const resources = {
         imageProcessingFailedRetry: 'Image processing failed, please try again',
         cannotStartImagePicker: 'Cannot start image picker',
         clickToReturn: 'Click to return'
-      },
-
-      // Test Page
-      test: {
-        keyboardFocusTest: 'Keyboard Focus Test',
-        testDescription: 'Test if TextInput loses focus when clicking buttons above keyboard'
       }
     }
   },
@@ -119,29 +86,13 @@ const resources = {
         loading: '加载中...',
         close: '关闭',
         error: '错误',
-        today: '今天',
-        calendar: '日历',
-        search: '搜索',
-        save: '保存',
-        cancel: '取消',
-        delete: '删除',
-        edit: '编辑',
-        confirm: '确认',
-        back: '返回'
+        today: '今天'
       },
 
       // Placeholders
       placeholders: {
         searchIdeas: '搜索想法...',
-        enterContent: '请输入内容...',
-        recordIdea: '记录你的想法...',
-        dateFormat: 'YYYY-MM-DD'
-      },
-
-      // Buttons and Labels
-      buttons: {
-        testButton: '测试按钮',
-        buttonClickCount: '按钮点击次数: {{count}}'
+        recordIdea: '记录你的想法...'
       },
 
       // Colors
@@ -176,27 +127,16 @@ const resources = {
         ],
         dayNames: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'],
         dayNamesShort: ['日', '一', '二', '三', '四', '五', '六'],
-        monthFormat: 'yyyy年MM月',
-        loading: '加载中...',
-        close: '关闭'
+        monthFormat: 'yyyy年MM月'
       },
 
       // Error Messages
       errors: {
         loadFailed: '加载失败',
         saveFailed: '保存失败',
-        searchFailed: '搜索失败',
-        appInitFailed: '应用初始化失败',
-        loadIdeasFailed: '加载想法失败',
-        navigateDateFailed: '跳转日期失败',
-        saveIdeaFailed: '保存想法失败',
-        updateTodoFailed: '更新待办状态失败',
-        updateCategoryFailed: '更新分类失败',
-        createIdeaFailed: '创建想法失败',
         insufficientPermissions: '权限不足',
         imageSelectionFailed: '选择失败',
         imageProcessingFailed: '处理失败',
-        imagePickerFailed: '选择失败',
         imageLoadFailed: '图片加载失败',
         cannotLoadEditor: '无法加载编辑器内容，请重试',
         cannotSaveEditor: '无法保存编辑器内容，请检查网络连接',
@@ -213,12 +153,6 @@ const resources = {
         imageProcessingFailedRetry: '图片处理失败，请重试',
         cannotStartImagePicker: '无法启动图片选择器',
         clickToReturn: '点击返回'
-      },
-
-      // Test Page
-      test: {
-        keyboardFocusTest: '键盘焦点测试',
-        testDescription: '测试点击键盘上方的按钮时，TextInput是否会丢失焦点'
       }
     }
   }
