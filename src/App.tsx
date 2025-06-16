@@ -9,8 +9,6 @@ import i18n from './i18n';
 import { RootStackParamList } from './Types';
 import Home from './pages/Home';
 import Search from './pages/Search';
-// import BlockEditorPage from './pages/BlockEditorPage';
-import KeyboardTestPage from './pages/KeyboardTestPage';
 import EditorPage from './pages/Editor';
 import ImageViewerPage from './pages/ImageViewer';
 
@@ -27,7 +25,7 @@ const App = () => {
       // 如果是中文（任何变体），使用中文，否则使用英文
       const language = deviceLanguage === 'zh' || deviceLanguage.startsWith('zh') ? 'zh' : 'en';
       setLanguage(language);
-      i18n.changeLanguage('en');
+      i18n.changeLanguage(language);
     }
   }, []);
 
