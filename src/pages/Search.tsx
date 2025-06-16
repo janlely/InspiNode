@@ -13,6 +13,7 @@ import {
   Pressable,
 } from 'react-native';
 import Feather from '@react-native-vector-icons/feather';
+import { useTranslation } from 'react-i18next';
 import { ideaDB } from '../utils/IdeaDatabase';
 import IdeaList, { IdeaItem } from '../components/IdeaList';
 import { ContentType } from '../Types';
@@ -32,6 +33,7 @@ interface FilterCriteria {
 }
 
 export default function Search() {
+  const { t } = useTranslation();
   const [filteredIdeas, setFilteredIdeas] = useState<IdeaItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -159,7 +161,7 @@ export default function Search() {
       setFilteredIdeas(sortedResults);
     } catch (error) {
       console.error('❌ Failed to search ideas:', error);
-      Alert.alert('错误', '搜索失败');
+      Alert.alert(t('common.error'), t('errors.cannotSearch'));
     } finally {
       setIsLoading(false);
     }
@@ -531,7 +533,7 @@ export default function Search() {
         <View style={styles.searchContainer}>
           <TextInput
             style={styles.searchInput}
-            placeholder="搜索想法..."
+            placeholder={t('placeholders.searchIdeas')}
             placeholderTextColor="#999"
             value={filters.keyword}
             onChangeText={handleKeywordChange}

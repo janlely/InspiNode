@@ -9,23 +9,31 @@ import {
   Dimensions,
 } from 'react-native';
 import { Calendar, CalendarList, DateData, LocaleConfig } from 'react-native-calendars';
+import { useTranslation } from 'react-i18next';
 import { ideaDB } from '../utils/IdeaDatabase';
 
-// 配置中文本地化，确保周日是第一天
-LocaleConfig.locales['zh'] = {
-  monthNames: [
-    '一月', '二月', '三月', '四月', '五月', '六月',
-    '七月', '八月', '九月', '十月', '十一月', '十二月'
-  ],
-  monthNamesShort: [
-    '1月', '2月', '3月', '4月', '5月', '6月',
-    '7月', '8月', '9月', '10月', '11月', '12月'
-  ],
-  dayNames: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'],
-  dayNamesShort: ['日', '一', '二', '三', '四', '五', '六'],
-  today: '今天'
+// 配置本地化，确保周日是第一天
+const configureLocale = (language: string, t: any) => {
+  if (language === 'zh') {
+    LocaleConfig.locales['zh'] = {
+      monthNames: t('calendar.months'),
+      monthNamesShort: t('calendar.monthsShort'),
+      dayNames: t('calendar.dayNames'),
+      dayNamesShort: t('calendar.dayNamesShort'),
+      today: t('common.today')
+    };
+    LocaleConfig.defaultLocale = 'zh';
+  } else {
+    LocaleConfig.locales['en'] = {
+      monthNames: t('calendar.months'),
+      monthNamesShort: t('calendar.monthsShort'),
+      dayNames: t('calendar.dayNames'),
+      dayNamesShort: t('calendar.dayNamesShort'),
+      today: t('common.today')
+    };
+    LocaleConfig.defaultLocale = 'en';
+  }
 };
-LocaleConfig.defaultLocale = 'zh';
 
 interface SwipeableCalendarProps {
   visible: boolean;
@@ -40,8 +48,14 @@ const SwipeableCalendar: React.FC<SwipeableCalendarProps> = ({
   onClose,
   onDateSelect,
 }) => {
+  const { t, i18n } = useTranslation();
   const [datesWithIdeas, setDatesWithIdeas] = useState<{ [key: string]: string[] }>({});
   const [isLoading, setIsLoading] = useState(false);
+  
+  // 配置本地化
+  useEffect(() => {
+    configureLocale(i18n.language, t);
+  }, [i18n.language, t]);
   
   // 计算日历宽度：屏幕宽度的95% - 容器padding
   const screenWidth = Dimensions.get('window').width;
@@ -166,11 +180,11 @@ const SwipeableCalendar: React.FC<SwipeableCalendarProps> = ({
         >
           {isLoading && (
             <View style={styles.loadingIndicator}>
-              <Text style={styles.loadingText}>加载中...</Text>
+              <Text style={styles.loadingText}>{t('common.loading')}</Text>
             </View>
           )}
           
-          <Text style={styles.title}>📅 日历</Text>
+          <Text style={styles.title}>{t('calendar.title')}</Text>
           
           <Calendar
             current={currentDateString}
@@ -198,14 +212,14 @@ const SwipeableCalendar: React.FC<SwipeableCalendarProps> = ({
               textMonthFontSize: 18,
               textDayHeaderFontSize: 14,
             }}
-            monthFormat={'yyyy年MM月'}
+            monthFormat={t('calendar.monthFormat')}
             firstDay={0}
             hideExtraDays={false}
             style={styles.calendar}
           />
           
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Text style={styles.closeButtonText}>关闭</Text>
+            <Text style={styles.closeButtonText}>{t('common.close')}</Text>
           </TouchableOpacity>
         </Pressable>
       </Pressable>

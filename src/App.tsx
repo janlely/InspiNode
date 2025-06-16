@@ -24,8 +24,10 @@ const App = () => {
     const locales = RNLocalize.getLocales();
     if (Array.isArray(locales)) {
       const deviceLanguage = locales[0].languageCode;
-      setLanguage(deviceLanguage);
-      i18n.changeLanguage(deviceLanguage);
+      // 如果是中文（任何变体），使用中文，否则使用英文
+      const language = deviceLanguage === 'zh' || deviceLanguage.startsWith('zh') ? 'zh' : 'en';
+      setLanguage(language);
+      i18n.changeLanguage('en');
     }
   }, []);
 
@@ -35,11 +37,6 @@ const App = () => {
       <SafeAreaProvider>
         <NavigationContainer ref={navigationRef} theme={scheme === 'dark' ? DarkTheme : DefaultTheme}>
           <Stack.Navigator>
-            {/* <Stack.Screen
-              name="KeyboardTest"
-              component={KeyboardTestPage}
-              options={{ headerShown: false }}
-            /> */}
             <Stack.Screen
               name="Home"
               component={Home}
@@ -50,11 +47,6 @@ const App = () => {
               component={Search}
               options={{ headerShown: false }}
             />
-            {/* <Stack.Screen
-              name="BlockEditor"
-              component={BlockEditorPage}
-              options={{ headerShown: false }}
-            /> */}
             <Stack.Screen
               name="Editor"
               component={EditorPage}

@@ -10,11 +10,13 @@ import {
   Text,
   SafeAreaView 
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { NavigationProps } from '../Types';
 
 type ImageViewerProps = NavigationProps<'ImageViewer'>;
 
 export default function ImageViewer({ navigation, route }: ImageViewerProps) {
+  const { t } = useTranslation();
   const { imageUri } = route.params;
   const [hasError, setHasError] = useState(false);
 
@@ -30,8 +32,8 @@ export default function ImageViewer({ navigation, route }: ImageViewerProps) {
     if (hasError) {
       return (
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>图片加载失败</Text>
-          <Text style={styles.errorSubText}>点击返回</Text>
+          <Text style={styles.errorText}>{t('errors.imageLoadFailed')}</Text>
+          <Text style={styles.errorSubText}>{t('errors.clickToReturn')}</Text>
         </View>
       );
     }

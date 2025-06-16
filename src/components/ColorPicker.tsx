@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 interface ColorPickerProps {
   visible: boolean;
@@ -14,31 +15,33 @@ interface ColorPickerProps {
   height?: number;
 }
 
-// 预定义的颜色列表
-const COLORS = [
-  { name: '默认', value: '#333333', display: '#333333' },
-  { name: '红色', value: '#ff4444', display: '#ff4444' },
-  { name: '橙色', value: '#ff8800', display: '#ff8800' },
-  { name: '黄色', value: '#ffcc00', display: '#ffcc00' },
-  { name: '绿色', value: '#44aa44', display: '#44aa44' },
-  { name: '蓝色', value: '#4488ff', display: '#4488ff' },
-  { name: '紫色', value: '#8844ff', display: '#8844ff' },
-  { name: '粉色', value: '#ff44aa', display: '#ff44aa' },
-  { name: '青色', value: '#00cccc', display: '#00cccc' },
-  { name: '深红', value: '#cc0000', display: '#cc0000' },
-  { name: '深绿', value: '#008800', display: '#008800' },
-  { name: '深蓝', value: '#0066cc', display: '#0066cc' },
-  { name: '灰色', value: '#888888', display: '#888888' },
-  { name: '深灰', value: '#555555', display: '#555555' },
-  { name: '浅灰', value: '#aaaaaa', display: '#aaaaaa' },
-];
-
 export const ColorPicker: React.FC<ColorPickerProps> = ({
   visible,
   onClose,
   onColorSelect,
   height,
 }) => {
+  const { t } = useTranslation();
+  
+  // 预定义的颜色列表
+  const COLORS = [
+    { name: t('colors.default'), value: '#333333', display: '#333333' },
+    { name: t('colors.red'), value: '#ff4444', display: '#ff4444' },
+    { name: t('colors.orange'), value: '#ff8800', display: '#ff8800' },
+    { name: t('colors.yellow'), value: '#ffcc00', display: '#ffcc00' },
+    { name: t('colors.green'), value: '#44aa44', display: '#44aa44' },
+    { name: t('colors.blue'), value: '#4488ff', display: '#4488ff' },
+    { name: t('colors.purple'), value: '#8844ff', display: '#8844ff' },
+    { name: t('colors.pink'), value: '#ff44aa', display: '#ff44aa' },
+    { name: t('colors.cyan'), value: '#00cccc', display: '#00cccc' },
+    { name: t('colors.darkRed'), value: '#cc0000', display: '#cc0000' },
+    { name: t('colors.darkGreen'), value: '#008800', display: '#008800' },
+    { name: t('colors.darkBlue'), value: '#0066cc', display: '#0066cc' },
+    { name: t('colors.gray'), value: '#888888', display: '#888888' },
+    { name: t('colors.darkGray'), value: '#555555', display: '#555555' },
+    { name: t('colors.lightGray'), value: '#aaaaaa', display: '#aaaaaa' },
+  ];
+
   const handleColorSelect = (color: string) => {
     onColorSelect(color);
     onClose();

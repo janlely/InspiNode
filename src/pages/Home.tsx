@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import { RootStackParamList, ContentType } from '../Types';
 import { ideaDB } from '../utils/IdeaDatabase';
 import SwipeableCalendar from '../components/SwipeableCalendar';
@@ -19,6 +20,7 @@ import { getFinalContentType } from '../utils/ContentTypeUtils';
 type HomeNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 export default function Home() {
+  const { t, i18n } = useTranslation();
   const navigation = useNavigation<HomeNavigationProp>();
   const [ideas, setIdeas] = useState<IdeaItem[]>([]);
   const [currentDate, setCurrentDate] = useState('');
@@ -45,7 +47,8 @@ export default function Home() {
         day: 'numeric',
         weekday: 'long'
       };
-      setCurrentDate(now.toLocaleDateString('zh-CN', options));
+      const locale = i18n.language === 'zh' ? 'zh-CN' : 'en-US';
+      setCurrentDate(now.toLocaleDateString(locale, options));
       
       // 设置日期字符串（用于数据库查询）
       const dateString = now.toISOString().split('T')[0]; // YYYY-MM-DD格式
@@ -56,7 +59,7 @@ export default function Home() {
       
     } catch (error) {
       console.error('❌ Failed to initialize app:', error);
-      Alert.alert('错误', '应用初始化失败，请重启应用');
+      Alert.alert(t('common.error'), t('errors.cannotInitApp'));
     } finally {
       setIsLoading(false);
     }
@@ -77,7 +80,7 @@ export default function Home() {
       setIdeas(formattedIdeas);
     } catch (error) {
       console.error('❌ Failed to load ideas:', error);
-      Alert.alert('错误', '加载想法失败');
+      Alert.alert(t('common.error'), t('errors.cannotLoadIdeas'));
     }
   };
 
@@ -98,14 +101,15 @@ export default function Home() {
         day: 'numeric',
         weekday: 'long'
       };
-      setCurrentDate(date.toLocaleDateString('zh-CN', options));
+      const locale = i18n.language === 'zh' ? 'zh-CN' : 'en-US';
+      setCurrentDate(date.toLocaleDateString(locale, options));
       
       // 加载该日期的想法
       await loadTodayIdeas(dateString);
       
     } catch (error) {
       console.error('❌ Failed to navigate to date:', error);
-      Alert.alert('错误', '跳转日期失败');
+      Alert.alert(t('common.error'), t('errors.cannotNavigateDate'));
     }
   };
 
@@ -124,7 +128,7 @@ export default function Home() {
   if (isLoading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
-        <Text style={styles.loadingText}>加载中...</Text>
+        <Text style={styles.loadingText}>{t('common.loading')}</Text>
       </View>
     );
   }

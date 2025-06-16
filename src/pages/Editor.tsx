@@ -2,6 +2,7 @@ import { Block, BlockType, NavigationProps, RootStackParamList, BlockRecord } fr
 import { useState, useEffect, useRef } from "react";
 import { FlatList, StyleSheet, Text, TouchableWithoutFeedback, View, Dimensions, StatusBar, Platform, TouchableOpacity, KeyboardAvoidingView, Keyboard, Alert, TextInput, Image } from "react-native";
 import Markdown from "react-native-markdown-display";
+import { useTranslation } from 'react-i18next';
 import { KeyboardToolbar } from '../components/KeyboardToolbar'
 import { ImageBlock } from '../components/ImageBlock'
 import { ideaDB } from '../utils/IdeaDatabase';
@@ -10,7 +11,7 @@ import React from "react";
 type EditorProps = NavigationProps<'Editor'>;
 
 export default function Editor({ navigation, route }: EditorProps) {
-
+  const { t } = useTranslation();
   const { idea } = route.params;
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [originalBlockIds, setOriginalBlockIds] = useState<Set<string>>(new Set()); // 跟踪从数据库加载的原始block IDs
@@ -339,7 +340,7 @@ export default function Editor({ navigation, route }: EditorProps) {
       }
     } catch (error) {
       console.error('❌ Error loading blocks:', error);
-      Alert.alert('加载失败', '无法加载编辑器内容，请重试');
+      Alert.alert(t('errors.loadFailed'), t('errors.cannotLoadEditor'));
       // 创建一个空的block作为备选
       const fallbackBlocks = [{
         id: Date.now().toString(),
@@ -401,7 +402,7 @@ export default function Editor({ navigation, route }: EditorProps) {
     } catch (error) {
       console.error('❌ Error saving blocks:', error);
       if (updateState) {
-        Alert.alert('保存失败', '无法保存编辑器内容，请检查网络连接');
+        Alert.alert(t('errors.saveFailed'), t('errors.cannotSaveEditor'));
       }
     }
   };

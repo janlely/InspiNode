@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Alert, Platform, PermissionsAndroid } from 'react-native';
 import FontAwesome5 from '@react-native-vector-icons/fontawesome5';
 import Feather from '@react-native-vector-icons/feather';
+import { useTranslation } from 'react-i18next';
 import { launchImageLibrary, ImagePickerResponse, MediaType } from 'react-native-image-picker';
 import RNFS from 'react-native-fs';
 
@@ -17,15 +18,15 @@ export interface KeyboardToolbarProps {
 }
 
 // 常用颜色配置
-const COLORS = [
-  { name: '黑色', color: '#000000', isDefault: true },
-  { name: '红色', color: '#dc3545' },
-  { name: '蓝色', color: '#007bff' },
-  { name: '绿色', color: '#28a745' },
-  { name: '橙色', color: '#fd7e14' },
-  { name: '紫色', color: '#6f42c1' },
-  { name: '粉色', color: '#e83e8c' },
-  { name: '灰色', color: '#6c757d' },
+const getColors = (t: any) => [
+  { name: t('colors.default'), color: '#000000', isDefault: true },
+  { name: t('colors.red'), color: '#dc3545' },
+  { name: t('colors.blue'), color: '#007bff' },
+  { name: t('colors.green'), color: '#28a745' },
+  { name: t('colors.orange'), color: '#fd7e14' },
+  { name: t('colors.purple'), color: '#6f42c1' },
+  { name: t('colors.pink'), color: '#e83e8c' },
+  { name: t('colors.gray'), color: '#6c757d' },
 ];
 
 export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
@@ -38,8 +39,10 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
   onBlockColorChange,
   currentBlockColor,
 }) => {
-
+  const { t } = useTranslation();
   const [showColorPanel, setShowColorPanel] = useState(false);
+  
+  const COLORS = getColors(t);
   
   // 根据当前block颜色获取选中的颜色配置
   const getSelectedColor = () => {
@@ -261,7 +264,7 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
       // 检查权限
       const hasPermission = await requestStoragePermission();
       if (!hasPermission) {
-        Alert.alert('权限不足', '需要相册访问权限才能选择图片');
+        Alert.alert(t('errors.insufficientPermissions'), t('errors.needCameraPermission'));
         return;
       }
 
@@ -282,7 +285,7 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
 
         if (response.errorMessage) {
           console.error('图片选择错误:', response.errorMessage);
-          Alert.alert('选择失败', '图片选择失败，请重试');
+          Alert.alert(t('errors.imageSelectionFailed'), t('errors.imageSelectionFailedRetry'));
           return;
         }
 
@@ -301,14 +304,14 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
 
             } catch (error) {
               console.error('处理图片失败:', error);
-              Alert.alert('处理失败', '图片处理失败，请重试');
+              Alert.alert(t('errors.imageProcessingFailed'), t('errors.imageProcessingFailedRetry'));
             }
           }
         }
       });
     } catch (error) {
       console.error('启动图片选择器失败:', error);
-      Alert.alert('选择失败', '无法启动图片选择器');
+      Alert.alert(t('errors.imageSelectionFailed'), t('errors.cannotStartImagePicker'));
     }
   };
 

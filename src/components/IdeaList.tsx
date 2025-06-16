@@ -15,6 +15,7 @@ import {
   TouchableWithoutFeedback,
 } from 'react-native';
 import Icon from '@react-native-vector-icons/fontawesome';
+import { useTranslation } from 'react-i18next';
 import { ideaDB } from '../utils/IdeaDatabase';
 import { NewIdea, UpdateIdea } from '../Types'
 import { ContentType } from '../Types';
@@ -49,6 +50,7 @@ export const IdeaList: React.FC<IdeaListProps> = ({
   onScreenPress,
   navigation,
 }) => {
+  const { t } = useTranslation();
   const [emptyInputValue, setEmptyInputValue] = useState('');
   const [emptyInputCategory, setEmptyInputCategory] = useState<string | undefined>(undefined);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -218,7 +220,7 @@ export const IdeaList: React.FC<IdeaListProps> = ({
       }
     } catch (error) {
       console.error('❌ Failed to save idea:', error);
-      Alert.alert('错误', '保存想法失败');
+              Alert.alert(t('common.error'), t('errors.cannotSaveIdea'));
     }
   }, [ideas, currentDateString, setIdeas]);
 
@@ -286,7 +288,7 @@ export const IdeaList: React.FC<IdeaListProps> = ({
         await ideaDB.updateIdea(idea.dbId, { completed: newCompletedState });
       } catch (error) {
         console.error('❌ Failed to update TODO status:', error);
-        Alert.alert('错误', '更新待办状态失败');
+        Alert.alert(t('common.error'), t('errors.cannotUpdateTodo'));
         setIdeas(prev => 
           prev.map(i => 
             i.id === ideaId ? { ...i, completed: !newCompletedState } : i
@@ -314,7 +316,7 @@ export const IdeaList: React.FC<IdeaListProps> = ({
           await ideaDB.updateIdea(targetIdea.dbId, { category });
         } catch (error) {
           console.error('❌ Failed to update category:', error);
-          Alert.alert('错误', '更新分类失败');
+          Alert.alert(t('common.error'), t('errors.cannotUpdateCategory'));
         }
       }
     }
@@ -354,7 +356,7 @@ export const IdeaList: React.FC<IdeaListProps> = ({
       
     } catch (error) {
       console.error('❌ Failed to create idea:', error);
-      Alert.alert('错误', '创建想法失败');
+      Alert.alert(t('common.error'), t('errors.cannotCreateIdea'));
     }
   };
 
@@ -389,7 +391,7 @@ export const IdeaList: React.FC<IdeaListProps> = ({
             style={[styles.ideaInput, item.completed && isTodo && styles.completedIdeaInput]}
             value={item.text}
             onChangeText={(text) => updateIdea(item.id, text)}
-            placeholder="记录你的想法..."
+            placeholder={t('placeholders.recordIdea')}
             placeholderTextColor="#999"
             multiline={false}
             returnKeyType="done"
@@ -470,7 +472,7 @@ export const IdeaList: React.FC<IdeaListProps> = ({
         ref={emptyInputRef}
         style={styles.ideaInput}
         value={emptyInputValue}
-        placeholder="记录你的想法..."
+        placeholder={t('placeholders.recordIdea')}
         placeholderTextColor="#999"
         multiline={false}
         returnKeyType="done"
