@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { FlatList, StyleSheet, Text, TouchableWithoutFeedback, View, Dimensions, StatusBar, Platform, TouchableOpacity, KeyboardAvoidingView, Keyboard, Alert, TextInput, Image } from "react-native";
 import Markdown from "react-native-markdown-display";
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../hooks/useTheme';
 import { KeyboardToolbar } from '../components/KeyboardToolbar'
 import { ImageBlock } from '../components/ImageBlock'
 import { ideaDB } from '../utils/IdeaDatabase';
@@ -12,6 +13,8 @@ type EditorProps = NavigationProps<'Editor'>;
 
 export default function Editor({ navigation, route }: EditorProps) {
   const { t } = useTranslation();
+  // @ts-ignore
+  const { theme, styles: themeStyles } = useTheme();
   const { idea } = route.params;
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [originalBlockIds, setOriginalBlockIds] = useState<Set<string>>(new Set()); // 跟踪从数据库加载的原始block IDs
@@ -446,47 +449,48 @@ export default function Editor({ navigation, route }: EditorProps) {
     // 根据block的颜色创建动态样式
     const blockTextStyle = [
       styles.blockText,
-      item.color && { color: item.color }
+      { color: item.color || theme.texts.primary }
     ];
 
     // 为Markdown创建动态样式
+    const baseMarkdownStyles = createMarkdownStyles(theme);
     const dynamicMarkdownStyles = {
-      ...markdownStyles,
+      ...baseMarkdownStyles,
       body: {
-        ...markdownStyles.body,
-        color: item.color || markdownStyles.body.color
+        ...baseMarkdownStyles.body,
+        color: item.color || baseMarkdownStyles.body.color
       },
       paragraph: {
-        ...markdownStyles.paragraph,
-        color: item.color || markdownStyles.paragraph.color
+        ...baseMarkdownStyles.paragraph,
+        color: item.color || baseMarkdownStyles.paragraph.color
       },
       em: {
-        ...markdownStyles.em,
-        color: item.color || markdownStyles.em.color
+        ...baseMarkdownStyles.em,
+        color: item.color || baseMarkdownStyles.em.color
       },
       strong: {
-        ...markdownStyles.strong,
-        color: item.color || markdownStyles.strong.color
+        ...baseMarkdownStyles.strong,
+        color: item.color || baseMarkdownStyles.strong.color
       },
       heading1: {
-        ...markdownStyles.heading1,
-        color: item.color || markdownStyles.heading1.color
+        ...baseMarkdownStyles.heading1,
+        color: item.color || baseMarkdownStyles.heading1.color
       },
       heading2: {
-        ...markdownStyles.heading2,
-        color: item.color || markdownStyles.heading2.color
+        ...baseMarkdownStyles.heading2,
+        color: item.color || baseMarkdownStyles.heading2.color
       },
       heading3: {
-        ...markdownStyles.heading3,
-        color: item.color || markdownStyles.heading3.color
+        ...baseMarkdownStyles.heading3,
+        color: item.color || baseMarkdownStyles.heading3.color
       },
       heading4: {
-        ...markdownStyles.heading4,
-        color: item.color || markdownStyles.heading4.color
+        ...baseMarkdownStyles.heading4,
+        color: item.color || baseMarkdownStyles.heading4.color
       },
       heading5: {
-        ...markdownStyles.heading5,
-        color: item.color || markdownStyles.heading5.color
+        ...baseMarkdownStyles.heading5,
+        color: item.color || baseMarkdownStyles.heading5.color
       },
     };
 
@@ -536,6 +540,9 @@ export default function Editor({ navigation, route }: EditorProps) {
         autoFocus={item.isActive}
         style={blockTextStyle}
         multiline={true}
+        selectionColor={theme.buttons.primary}
+        cursorColor={theme.buttons.primary}
+        placeholderTextColor={theme.texts.tertiary}
       />
     ) : (
       <TouchableOpacity 
@@ -751,23 +758,29 @@ export default function Editor({ navigation, route }: EditorProps) {
 
   if (isLoading) {
     return (
-      <View style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-        <View style={styles.header}>
-          <Text style={styles.headerText}>{idea.hint}</Text>
+      <View style={[styles.container, { backgroundColor: theme.backgrounds.primary }]}>
+        <StatusBar barStyle={theme.statusBar.barStyle} backgroundColor={theme.statusBar.backgroundColor} />
+        <View style={[styles.header, { 
+          backgroundColor: theme.backgrounds.primary, 
+          borderBottomColor: theme.borders.primary 
+        }]}>
+          <Text style={[styles.headerText, { color: theme.texts.primary }]}>{idea.hint}</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>加载中...</Text>
+          <Text style={[styles.loadingText, { color: theme.texts.primary }]}>{t('common.loading')}</Text>
         </View>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      <View style={styles.header}>
-        <Text style={styles.headerText}>{idea.hint}</Text>
+    <View style={[styles.container, { backgroundColor: theme.backgrounds.primary }]}>
+      <StatusBar barStyle={theme.statusBar.barStyle} backgroundColor={theme.statusBar.backgroundColor} />
+      <View style={[styles.header, { 
+        backgroundColor: theme.backgrounds.primary, 
+        borderBottomColor: theme.borders.primary 
+      }]}>
+        <Text style={[styles.headerText, { color: theme.texts.primary }]}>{idea.hint}</Text>
       </View>
       <KeyboardAvoidingView 
         style={{ flex: 1 }}
@@ -778,7 +791,7 @@ export default function Editor({ navigation, route }: EditorProps) {
           data={blocks}
           renderItem={renderBlock}
           keyExtractor={(item) => item.id}
-          style={styles.flatList}
+          style={[styles.flatList, { backgroundColor: theme.backgrounds.primary }]}
           contentContainerStyle={styles.flatListContent}
           scrollEnabled={true}
           keyboardShouldPersistTaps="handled"
@@ -802,67 +815,68 @@ export default function Editor({ navigation, route }: EditorProps) {
   )
 }
 
-const markdownStyles = {
-  body: {
-    fontSize: 16,
-    lineHeight: 22,
-    paddingVertical: 1,
-    color: '#333333',
-  },
-  heading1: {
-    fontSize: 28,
-    fontWeight: 'bold' as const,
-    color: '#1a1a1a',
-    marginBottom: 1,
-    lineHeight: 30,
-  },
-  heading2: {
-    fontSize: 24,
-    fontWeight: 'bold' as const,
-    color: '#1a1a1a',
-    marginBottom: 1,
-    lineHeight: 26,
-  },
-  heading3: {
-    fontSize: 20,
-    fontWeight: 'bold' as const,
-    color: '#1a1a1a',
-    marginBottom: 0,
-    lineHeight: 22,
-  },
-  heading4: {
-    fontSize: 18,
-    fontWeight: 'bold' as const,
-    color: '#1a1a1a',
-    marginBottom: 0,
-    lineHeight: 20,
-  },
-  heading5: {
-    fontSize: 16,
-    fontWeight: 'bold' as const,
-    color: '#1a1a1a',
-    marginBottom: 0,
-    lineHeight: 18,
-  },
-  paragraph: {
-    marginBottom: 0,
-    color: '#333333',
-  },
-  bullet_list: {
-    marginBottom: 0,
-  },
-  list_item: {
-    marginBottom: 0,
-  },
-  strong: {
-    fontWeight: 'bold' as const,
-    color: '#1a1a1a',
-  },
-  em: {
-    fontStyle: 'italic' as const,
-    color: '#333333',
-  },
-};
+  // 创建动态markdown样式
+  const createMarkdownStyles = (theme: any) => ({
+    body: {
+      fontSize: 16,
+      lineHeight: 22,
+      paddingVertical: 1,
+      color: theme.texts.primary,
+    },
+    heading1: {
+      fontSize: 28,
+      fontWeight: 'bold' as const,
+      color: theme.texts.primary,
+      marginBottom: 1,
+      lineHeight: 30,
+    },
+    heading2: {
+      fontSize: 24,
+      fontWeight: 'bold' as const,
+      color: theme.texts.primary,
+      marginBottom: 1,
+      lineHeight: 26,
+    },
+    heading3: {
+      fontSize: 20,
+      fontWeight: 'bold' as const,
+      color: theme.texts.primary,
+      marginBottom: 0,
+      lineHeight: 22,
+    },
+    heading4: {
+      fontSize: 18,
+      fontWeight: 'bold' as const,
+      color: theme.texts.primary,
+      marginBottom: 0,
+      lineHeight: 20,
+    },
+    heading5: {
+      fontSize: 16,
+      fontWeight: 'bold' as const,
+      color: theme.texts.primary,
+      marginBottom: 0,
+      lineHeight: 18,
+    },
+    paragraph: {
+      marginBottom: 0,
+      color: theme.texts.primary,
+    },
+    bullet_list: {
+      marginBottom: 0,
+    },
+    list_item: {
+      marginBottom: 0,
+    },
+    strong: {
+      fontWeight: 'bold' as const,
+      color: theme.texts.primary,
+    },
+    em: {
+      fontStyle: 'italic' as const,
+      color: theme.texts.primary,
+    },
+  });
 
 // 自定义渲染规则来处理颜色语法 [text](color:value)
 const markdownRules = {
@@ -890,15 +904,12 @@ const markdownRules = {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
   },
   header: {
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingBottom: 16,
     paddingHorizontal: 16,
-    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -911,12 +922,10 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: 24,
     fontWeight: 'bold' as const,
-    color: '#1a1a1a',
     textAlign: 'center' as const,
   },
   flatList: {
     flex: 1,
-    backgroundColor: '#ffffff',
   },
   flatListContent: {
     flexGrow: 1,
@@ -928,7 +937,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     marginHorizontal: 16,
-    color: '#333333',
     minHeight: 32,
   },
   markdownBlock: {
@@ -951,7 +959,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#666666',
     textAlign: 'center' as const,
     lineHeight: 24,
   },
@@ -963,7 +970,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#666666',
     textAlign: 'center' as const,
   },
 
