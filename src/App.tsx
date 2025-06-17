@@ -1,11 +1,12 @@
 import * as React from 'react';
-import { DarkTheme, DefaultTheme, NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
+import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as RNLocalize from 'react-native-localize';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useColorScheme } from 'react-native';
+import { StatusBar } from 'react-native';
 import i18n from './i18n';
+import { useTheme } from './hooks/useTheme.js';
 import { RootStackParamList } from './Types';
 import Home from './pages/Home';
 import Search from './pages/Search';
@@ -16,7 +17,7 @@ const Stack = createStackNavigator<RootStackParamList>();
 
 const App = () => {
   const navigationRef = React.useRef<NavigationContainerRef<RootStackParamList>>(null);
-  const scheme = useColorScheme();
+  const { theme, getThemedStyle, isDark } = useTheme();
 
   React.useEffect(() => {
     const locales = RNLocalize.getLocales();
@@ -29,11 +30,55 @@ const App = () => {
     }
   }, []);
 
+  // 创建导航主题配置
+  const navigationTheme = {
+    dark: isDark,
+    colors: {
+      primary: theme.buttons.primary,
+      background: theme.backgrounds.primary,
+      card: theme.backgrounds.secondary,
+      text: theme.texts.primary,
+      border: theme.borders.primary,
+      notification: theme.buttons.primary,
+    },
+    fonts: {
+      regular: {
+        fontFamily: 'System',
+        fontWeight: 'normal' as const,
+      },
+      medium: {
+        fontFamily: 'System',
+        fontWeight: '500' as const,
+      },
+      light: {
+        fontFamily: 'System',
+        fontWeight: '300' as const,
+      },
+      thin: {
+        fontFamily: 'System',
+        fontWeight: '100' as const,
+      },
+      bold: {
+        fontFamily: 'System',
+        fontWeight: 'bold' as const,
+      },
+      heavy: {
+        fontFamily: 'System',
+        fontWeight: '900' as const,
+      },
+    }
+  };
+
+  const statusBarStyle = getThemedStyle.statusBar();
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.backgrounds.primary }}>
       <SafeAreaProvider>
-        <NavigationContainer ref={navigationRef} theme={scheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <StatusBar 
+          barStyle={statusBarStyle.barStyle}
+          backgroundColor={statusBarStyle.backgroundColor}
+        />
+        <NavigationContainer ref={navigationRef} theme={navigationTheme}>
           <Stack.Navigator>
             <Stack.Screen
               name="Home"
@@ -68,6 +113,7 @@ const App = () => {
 };
 
 export default App;
+
 function setLanguage(deviceLanguage: string) {
   // 设置语言逻辑（如果需要额外处理可在此添加）
 }

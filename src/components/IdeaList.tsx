@@ -16,6 +16,8 @@ import {
 } from 'react-native';
 import Icon from '@react-native-vector-icons/fontawesome';
 import { useTranslation } from 'react-i18next';
+// @ts-ignore
+import { useTheme } from '../hooks/useTheme.js';
 import { ideaDB } from '../utils/IdeaDatabase';
 import { NewIdea, UpdateIdea } from '../Types'
 import { ContentType } from '../Types';
@@ -51,6 +53,8 @@ export const IdeaList: React.FC<IdeaListProps> = ({
   navigation,
 }) => {
   const { t } = useTranslation();
+  // @ts-ignore
+  const { theme } = useTheme();
   const [emptyInputValue, setEmptyInputValue] = useState('');
   const [emptyInputCategory, setEmptyInputCategory] = useState<string | undefined>(undefined);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -202,64 +206,68 @@ export const IdeaList: React.FC<IdeaListProps> = ({
         
         await ideaDB.updateIdea(idea.dbId, updatedRecord);
       } else {
+        // 新建想法
+        const finalCategory = getFinalContentType(idea.text, idea.manualCategory);
         const newIdea: NewIdea = {
           hint: idea.text.trim(),
           detail: '',
           date: currentDateString,
-          category: getFinalContentType(idea.text, idea.manualCategory),
-          completed: idea.completed || false,
+          category: finalCategory,
+          completed: false,
         };
         
         const dbId = await ideaDB.addIdea(newIdea);
         
         setIdeas(prev => 
           prev.map(i => 
-            i.id === id ? { ...i, dbId } : i
+            i.id === id ? { ...i, dbId: dbId } : i
           )
         );
       }
     } catch (error) {
       console.error('❌ Failed to save idea:', error);
-              Alert.alert(t('common.error'), t('errors.cannotSaveIdea'));
+      Alert.alert(t('common.error'), t('errors.cannotSaveIdea'));
     }
   }, [ideas, currentDateString, setIdeas]);
 
-  // 处理点击屏幕空白区域
-  const handleScreenPress = useCallback(() => {
-    if (editingIdeaId) {
-      finishEditingIdea(editingIdeaId);
-    }
-    
-    if (emptyInputValue.trim()) {
-      setShouldSaveEmptyInput(true);
-    }
-    
-    Keyboard.dismiss();
-    onScreenPress?.();
-  }, [editingIdeaId, finishEditingIdea, emptyInputValue, onScreenPress]);
+  // 处理输入提交
+  const handleInputSubmit = useCallback((id: string) => {
+    finishEditingIdea(id);
+  }, [finishEditingIdea]);
 
-  // 处理输入框聚焦
-  const handleInputFocus = useCallback((inputId: string, index: number) => {
+  // 处理输入框失焦
+  const handleInputBlur = useCallback((id: string) => {
     setTimeout(() => {
-      if (flatListRef.current && keyboardVisible && index > 2) {
+      const hasActiveInput = Object.values(inputRefs.current).some(ref => ref?.isFocused()) || 
+                            emptyInputRef.current?.isFocused();
+      
+      if (!hasActiveInput) {
+        finishEditingIdea(id);
+      }
+    }, 200);
+  }, [finishEditingIdea]);
+
+  // 处理输入焦点
+  const handleInputFocus = (ideaId: string, index: number) => {
+    setEditingIdeaId(ideaId);
+    
+    // 延迟滚动以确保键盘完全显示
+    setTimeout(() => {
+      if (flatListRef.current && index >= 0) {
         try {
-          if (inputId === 'empty') {
-            flatListRef.current.scrollToEnd({ animated: true });
-          } else {
-            flatListRef.current.scrollToIndex({
-              index: index,
-              animated: true,
-              viewPosition: 0.25,
-            });
-          }
+          flatListRef.current.scrollToIndex({ 
+            index, 
+            animated: true,
+            viewPosition: 0.5,
+          });
         } catch (error) {
-          // 滚动失败时忽略错误
+          // 滚动失败时使用备选方案
         }
       }
     }, 300);
-  }, [keyboardVisible]);
+  };
 
-  // 处理分类选择
+  // 处理图标按钮点击（分类选择）
   const handleIconPress = (ideaId: string) => {
     setSelectedIdeaForCategory(ideaId);
     setShowCategoryModal(true);
@@ -270,50 +278,53 @@ export const IdeaList: React.FC<IdeaListProps> = ({
     setShowCategoryModal(true);
   };
 
-  // 处理TODO完成状态切换
+  // 处理待办事项勾选
   const handleTodoToggle = async (ideaId: string) => {
     const idea = ideas.find(i => i.id === ideaId);
     if (!idea) return;
+
+    const newCompleted = !idea.completed;
     
-    const newCompletedState = !idea.completed;
-    
+    // 立即更新UI
     setIdeas(prev => 
       prev.map(i => 
-        i.id === ideaId ? { ...i, completed: newCompletedState } : i
+        i.id === ideaId ? { ...i, completed: newCompleted } : i
       )
     );
-    
+
+    // 更新数据库
     if (idea.dbId) {
       try {
-        await ideaDB.updateIdea(idea.dbId, { completed: newCompletedState });
+        await ideaDB.updateIdea(idea.dbId, { completed: newCompleted });
       } catch (error) {
         console.error('❌ Failed to update TODO status:', error);
         Alert.alert(t('common.error'), t('errors.cannotUpdateTodo'));
         setIdeas(prev => 
           prev.map(i => 
-            i.id === ideaId ? { ...i, completed: !newCompletedState } : i
+            i.id === ideaId ? { ...i, completed: !newCompleted } : i
           )
         );
       }
     }
   };
 
+  // 处理分类选择
   const handleCategorySelect = async (category: ContentType) => {
+    setShowCategoryModal(false);
+    
     if (selectedIdeaForCategory === 'empty') {
       setEmptyInputCategory(category);
     } else if (selectedIdeaForCategory) {
-      setIdeas(prev => 
-        prev.map(idea => 
-          idea.id === selectedIdeaForCategory 
-            ? { ...idea, manualCategory: category }
-            : idea
-        )
-      );
-      
-      const targetIdea = ideas.find(idea => idea.id === selectedIdeaForCategory);
-      if (targetIdea?.dbId) {
+      // 更新现有想法的分类
+      const idea = ideas.find(i => i.id === selectedIdeaForCategory);
+      if (idea && idea.dbId) {
         try {
-          await ideaDB.updateIdea(targetIdea.dbId, { category });
+          await ideaDB.updateIdea(idea.dbId, { category });
+          setIdeas(prev => 
+            prev.map(i => 
+              i.id === selectedIdeaForCategory ? { ...i, manualCategory: category } : i
+            )
+          );
         } catch (error) {
           console.error('❌ Failed to update category:', error);
           Alert.alert(t('common.error'), t('errors.cannotUpdateCategory'));
@@ -321,42 +332,39 @@ export const IdeaList: React.FC<IdeaListProps> = ({
       }
     }
     
-    setShowCategoryModal(false);
     setSelectedIdeaForCategory(null);
   };
 
-  // 处理新增想法
+  // 处理空输入框提交
   const handleEmptyInputSubmit = async () => {
-    if (!emptyInputValue.trim()) return;
-    
-    try {
-      const finalCategory = getFinalContentType(emptyInputValue, emptyInputCategory);
-      
-      const newIdea: NewIdea = {
-        hint: emptyInputValue.trim(),
-        detail: '',
-        date: currentDateString,
-        category: finalCategory,
-        completed: false,
-      };
-      
-      const dbId = await ideaDB.addIdea(newIdea);
-      
-      const newIdeaItem: IdeaItem = {
-        id: Date.now().toString(),
-        text: emptyInputValue.trim(),
-        dbId: dbId,
-        manualCategory: emptyInputCategory,
-        completed: false,
-      };
-      
-      setIdeas(prev => [...prev, newIdeaItem]);
-      setEmptyInputValue('');
-      setEmptyInputCategory(undefined);
-      
-    } catch (error) {
-      console.error('❌ Failed to create idea:', error);
-      Alert.alert(t('common.error'), t('errors.cannotCreateIdea'));
+    if (emptyInputValue.trim()) {
+      try {
+        const finalCategory = getFinalContentType(emptyInputValue, emptyInputCategory);
+        const newIdea: NewIdea = {
+          hint: emptyInputValue.trim(),
+          detail: '',
+          date: currentDateString,
+          category: finalCategory,
+          completed: false,
+        };
+        
+        const dbId = await ideaDB.addIdea(newIdea);
+        
+        const newIdeaItem: IdeaItem = {
+          id: Date.now().toString(),
+          text: emptyInputValue.trim(),
+          dbId: dbId,
+          manualCategory: emptyInputCategory,
+          completed: false,
+        };
+        
+        setIdeas(prev => [...prev, newIdeaItem]);
+        setEmptyInputValue('');
+        setEmptyInputCategory(undefined);
+      } catch (error) {
+        console.error('❌ Failed to create idea:', error);
+        Alert.alert(t('common.error'), t('errors.cannotCreateIdea'));
+      }
     }
   };
 
@@ -365,146 +373,235 @@ export const IdeaList: React.FC<IdeaListProps> = ({
     setEmptyInputValue(filteredText);
   };
 
-  // 渲染想法项目
   const renderIdeaItem = ({ item, index }: { item: IdeaItem; index: number }) => {
     const isEditing = editingIdeaId === item.id;
-    const isTodo = getFinalContentType(item.text, item.manualCategory) === ContentType.TODO;
-    
+    const contentType = getFinalContentType(item.text, item.manualCategory);
+    const contentIcon = getContentIcon(item.text, item.manualCategory);
+    const isTodo = contentType === ContentType.TODO;
+    const isCompleted = item.completed;
+
     return (
-      <View style={styles.ideaContainer}>
+      <View style={[
+        styles.ideaContainer,
+        {
+          backgroundColor: theme.backgrounds.secondary,
+          shadowColor: theme.special.shadow,
+          borderColor: theme.borders.card,
+        }
+      ]}>
+        {/* 图标容器 */}
         <TouchableOpacity 
           style={styles.iconContainer}
           onPress={() => handleIconPress(item.id)}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Text style={styles.contentIcon}>
-            {getContentIcon(item.text, item.manualCategory)}
+          <Text style={[
+            styles.contentIcon,
+            { color: theme.texts.secondary }
+          ]}>
+            {contentIcon}
           </Text>
         </TouchableOpacity>
-        
+
+        {/* 文本输入或显示 */}
         {isEditing ? (
           <TextInput
-            ref={(ref) => {
-              inputRefs.current[item.id] = ref;
-            }}
-            style={[styles.ideaInput, item.completed && isTodo && styles.completedIdeaInput]}
+            ref={(ref) => { inputRefs.current[item.id] = ref; }}
+            style={[
+              styles.ideaInput,
+              {
+                color: theme.texts.primary,
+                backgroundColor: theme.backgrounds.secondary,
+              },
+              isCompleted && {
+                textDecorationLine: 'line-through',
+                color: theme.texts.secondary,
+                opacity: 0.7,
+              }
+            ]}
             value={item.text}
             onChangeText={(text) => updateIdea(item.id, text)}
             placeholder={t('placeholders.recordIdea')}
-            placeholderTextColor="#999"
+            placeholderTextColor={theme.texts.tertiary}
             multiline={false}
             returnKeyType="done"
-            onSubmitEditing={() => finishEditingIdea(item.id)}
-            onBlur={() => {
-              setTimeout(() => {
-                if (editingIdeaId === item.id) {
-                  finishEditingIdea(item.id);
-                }
-              }, 150);
-            }}
+            onSubmitEditing={() => handleInputSubmit(item.id)}
+            onBlur={() => handleInputBlur(item.id)}
             onFocus={() => handleInputFocus(item.id, index)}
-            blurOnSubmit={false}
-            autoFocus
+            blurOnSubmit={true}
+            autoCapitalize="sentences"
+            autoCorrect={true}
           />
         ) : (
-          <TouchableOpacity
+          <TouchableOpacity 
             style={styles.ideaTextContainer}
             onPress={() => handleIdeaPress(item.id)}
-            activeOpacity={0.6}
+            activeOpacity={0.7}
           >
-            <Text style={[styles.ideaText, item.completed && isTodo && styles.completedIdeaText]}>
+            <Text style={[
+              styles.ideaText,
+              {
+                color: theme.texts.primary,
+              },
+              isCompleted && {
+                textDecorationLine: 'line-through',
+                color: theme.texts.secondary,
+                opacity: 0.7,
+              }
+            ]}>
               {item.text}
             </Text>
           </TouchableOpacity>
         )}
 
-        {/* 只有TODO类型才显示复选框 */}
+        {/* BlockEditor 按钮 */}
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => navigation.navigate('Editor', { idea: {
+            id: item.dbId || -1,
+            hint: item.text,
+            detail: '',
+            date: currentDateString,
+            category: getFinalContentType(item.text, item.manualCategory),
+            completed: item.completed || false,
+          }})}
+        >
+          <Icon name="expand" size={20} color={theme.texts.secondary} />
+        </TouchableOpacity>
+
+        {/* 待办事项复选框 */}
         {isTodo && (
-          <TouchableOpacity
+          <TouchableOpacity 
             style={styles.checkboxContainer}
             onPress={() => handleTodoToggle(item.id)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <View style={[styles.checkbox, item.completed && styles.checkboxChecked]}>
-              {item.completed && (
-                <Text style={styles.checkmark}>✓</Text>
+            <View style={[
+              styles.checkbox,
+              {
+                borderColor: theme.borders.secondary,
+                backgroundColor: theme.backgrounds.secondary,
+              },
+              isCompleted && {
+                backgroundColor: theme.buttons.success,
+                borderColor: theme.buttons.success,
+              }
+            ]}>
+              {isCompleted && (
+                <Text style={[
+                  styles.checkmark,
+                  { color: theme.buttons.successText }
+                ]}>
+                  ✓
+                </Text>
               )}
             </View>
           </TouchableOpacity>
         )}
-        
-        {/* BlockEditor按钮 */}
-        {navigation && item.dbId && (
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={() => navigation.navigate('Editor', { idea: {
-              id: item.dbId,
-              hint: item.text,
-              detail: '',
-              date: currentDateString,
-              category: item.manualCategory,
-            }})}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            activeOpacity={0.3}
-          >
-            <Icon name="expand" size={20} color="#495057" />
-          </TouchableOpacity>
-        )}
-        
       </View>
     );
   };
 
-  // 渲染空输入框项目
   const renderEmptyTextBox = () => (
-    <View style={styles.ideaContainer}>
+    <View style={[
+      styles.ideaContainer,
+      {
+        backgroundColor: theme.backgrounds.secondary,
+        shadowColor: theme.special.shadow,
+        borderColor: theme.borders.card,
+      }
+    ]}>
+      {/* 图标容器 */}
       <TouchableOpacity 
         style={styles.iconContainer}
         onPress={handleEmptyInputIconPress}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
-        <Text style={styles.contentIcon}>
+        <Text style={[
+          styles.contentIcon,
+          { color: theme.texts.secondary }
+        ]}>
           {getContentIcon(emptyInputValue, emptyInputCategory)}
         </Text>
       </TouchableOpacity>
+
+      {/* 文本输入 */}
       <TextInput
         ref={emptyInputRef}
-        style={styles.ideaInput}
+        style={[
+          styles.ideaInput,
+          {
+            color: theme.texts.primary,
+            backgroundColor: theme.backgrounds.secondary,
+          }
+        ]}
         value={emptyInputValue}
         placeholder={t('placeholders.recordIdea')}
-        placeholderTextColor="#999"
+        placeholderTextColor={theme.texts.tertiary}
         multiline={false}
         returnKeyType="done"
         onChangeText={handleEmptyInputChange}
         onSubmitEditing={handleEmptyInputSubmit}
         onFocus={() => handleInputFocus('empty', ideas.length)}
+        autoCapitalize="sentences"
+        autoCorrect={true}
+        blurOnSubmit={true}
       />
     </View>
   );
 
   const renderCategoryModal = () => (
     <Modal
-      visible={showCategoryModal}
-      transparent={true}
       animationType="fade"
+      transparent={true}
+      visible={showCategoryModal}
       onRequestClose={() => setShowCategoryModal(false)}
     >
       <Pressable 
-        style={styles.modalOverlay}
+        style={[
+          styles.modalOverlay,
+          { backgroundColor: theme.backgrounds.modal }
+        ]}
         onPress={() => setShowCategoryModal(false)}
       >
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>选择分类</Text>
+        <Pressable 
+          style={[
+            styles.modalContent,
+            {
+              backgroundColor: theme.backgrounds.secondary,
+              shadowColor: theme.special.shadow,
+            }
+          ]}
+          onPress={(e) => e.stopPropagation()}
+        >
+          <Text style={[
+            styles.modalTitle,
+            { color: theme.texts.primary }
+          ]}>
+            选择分类
+          </Text>
           
           {Object.entries(CONTENT_TYPES).map(([type, config]) => (
             <TouchableOpacity
               key={type}
-              style={styles.categoryOption}
+              style={[
+                styles.categoryOption,
+                { backgroundColor: theme.buttons.secondary }
+              ]}
               onPress={() => handleCategorySelect(type as ContentType)}
             >
-              <Text style={styles.categoryIcon}>{config.icon}</Text>
-              <Text style={styles.categoryName}>{config.name}</Text>
+              <Text style={[
+                styles.categoryIcon,
+                { color: theme.texts.secondary }
+              ]}>
+                {config.icon}
+              </Text>
+              <Text style={[
+                styles.categoryName,
+                { color: theme.texts.primary }
+              ]}>
+                {config.name}
+              </Text>
             </TouchableOpacity>
           ))}
           
@@ -512,20 +609,36 @@ export const IdeaList: React.FC<IdeaListProps> = ({
             style={styles.cancelButton}
             onPress={() => setShowCategoryModal(false)}
           >
-            <Text style={styles.cancelButtonText}>取消</Text>
+            <Text style={[
+              styles.cancelButtonText,
+              { color: theme.texts.secondary }
+            ]}>
+              取消
+            </Text>
           </TouchableOpacity>
-        </View>
+        </Pressable>
       </Pressable>
     </Modal>
   );
 
-  // 准备渲染的数据
+  // 处理屏幕空白区域点击
+  const handleScreenPress = () => {
+    if (editingIdeaId) {
+      finishEditingIdea(editingIdeaId);
+    }
+    
+    if (onScreenPress) {
+      onScreenPress();
+    }
+  };
+
+  // 准备渲染数据
   const renderData = React.useMemo(() => {
     if (showEmptyInput) {
       return [...ideas, { id: 'empty', text: emptyInputValue }];
     }
     return ideas;
-  }, [ideas, emptyInputValue, showEmptyInput]);
+  }, [ideas, showEmptyInput, emptyInputValue]);
 
   return (
     <TouchableWithoutFeedback onPress={handleScreenPress}>
@@ -584,11 +697,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
-    backgroundColor: '#ffffff',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 1,
@@ -596,6 +707,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
+    borderWidth: 1,
   },
   iconContainer: {
     width: 24,
@@ -610,23 +722,19 @@ const styles = StyleSheet.create({
   ideaInput: {
     flex: 1,
     fontSize: 16,
-    color: '#343a40',
     paddingVertical: 4,
     height: 30,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 24,
     width: '80%',
     maxWidth: 300,
-    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -638,7 +746,6 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#343a40',
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -649,7 +756,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     marginBottom: 8,
-    backgroundColor: '#f8f9fa',
   },
   categoryIcon: {
     fontSize: 18,
@@ -657,7 +763,6 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     fontSize: 16,
-    color: '#343a40',
   },
   cancelButton: {
     marginTop: 12,
@@ -666,7 +771,6 @@ const styles = StyleSheet.create({
   },
   cancelButtonText: {
     fontSize: 16,
-    color: '#6c757d',
   },
   ideaTextContainer: {
     flex: 1,
@@ -675,7 +779,6 @@ const styles = StyleSheet.create({
   },
   ideaText: {
     fontSize: 16,
-    color: '#343a40',
     lineHeight: 20,
   },
   // 复选框相关样式
@@ -688,30 +791,12 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 4,
     borderWidth: 2,
-    borderColor: '#dee2e6',
-    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  checkboxChecked: {
-    backgroundColor: '#28a745',
-    borderColor: '#28a745',
-  },
   checkmark: {
-    color: '#ffffff',
     fontSize: 12,
     fontWeight: 'bold',
-  },
-  // 完成状态的文本样式
-  completedIdeaText: {
-    textDecorationLine: 'line-through',
-    color: '#6c757d',
-    opacity: 0.7,
-  },
-  completedIdeaInput: {
-    textDecorationLine: 'line-through',
-    color: '#6c757d',
-    opacity: 0.7,
   },
   // BlockEditor按钮样式
   editButton: {

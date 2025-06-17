@@ -5,6 +5,8 @@ import Feather from '@react-native-vector-icons/feather';
 import { useTranslation } from 'react-i18next';
 import { launchImageLibrary, ImagePickerResponse, MediaType } from 'react-native-image-picker';
 import RNFS from 'react-native-fs';
+// @ts-ignore
+import { useTheme } from '../hooks/useTheme.js';
 
 export interface KeyboardToolbarProps {
   textInputRef: TextInput | null; // TextInput 引用
@@ -17,16 +19,15 @@ export interface KeyboardToolbarProps {
   currentBlockColor?: string; // 当前block的颜色
 }
 
-// 常用颜色配置
 const getColors = (t: any) => [
-  { name: t('colors.default'), color: '#000000', isDefault: true },
-  { name: t('colors.red'), color: '#dc3545' },
-  { name: t('colors.blue'), color: '#007bff' },
-  { name: t('colors.green'), color: '#28a745' },
-  { name: t('colors.orange'), color: '#fd7e14' },
-  { name: t('colors.purple'), color: '#6f42c1' },
-  { name: t('colors.pink'), color: '#e83e8c' },
-  { name: t('colors.gray'), color: '#6c757d' },
+  { name: t('colors.default'), color: '#333333' },
+  { name: t('colors.red'), color: '#ff4444' },
+  { name: t('colors.orange'), color: '#ff8800' },
+  { name: t('colors.yellow'), color: '#ffcc00' },
+  { name: t('colors.green'), color: '#44aa44' },
+  { name: t('colors.blue'), color: '#4488ff' },
+  { name: t('colors.purple'), color: '#8844ff' },
+  { name: t('colors.pink'), color: '#ff44aa' },
 ];
 
 export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
@@ -40,13 +41,13 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
   currentBlockColor,
 }) => {
   const { t } = useTranslation();
+  // @ts-ignore
+  const { theme } = useTheme();
   const [showColorPanel, setShowColorPanel] = useState(false);
   
   const COLORS = getColors(t);
   
-  // 根据当前block颜色获取选中的颜色配置
   const getSelectedColor = () => {
-    if (!currentBlockColor) return COLORS[0]; // 默认黑色
     return COLORS.find(color => color.color === currentBlockColor) || COLORS[0];
   };
   
@@ -55,149 +56,133 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
   const handleHeaderPress = (level: number) => {
     if (!textInputRef || !onTextChange) return;
     
-    const headerPrefix = '#'.repeat(level) + ' ';
+    const currentPosition = cursorPosition;
+    const textBefore = currentText.substring(0, currentPosition);
+    const textAfter = currentText.substring(currentPosition);
+
+    // 检查是否在行首
+    const isAtLineStart = currentPosition === 0 || currentText[currentPosition - 1] === '\n';
     
-    let newText: string;
-    let characterChange: number; // 文本长度的变化
-    
-    // 检查当前文本是否已经是标题
-    const isCurrentlyHeader = currentText.match(/^#+\s/);
-    
-    if (isCurrentlyHeader) {
-      // 已经是标题，替换标题级别
-      const oldHeaderPrefix = isCurrentlyHeader[0]; // 例如 "## "
-      newText = currentText.replace(/^#+\s/, headerPrefix);
-      
-      // 计算字符变化：新前缀长度 - 旧前缀长度
-      // 正数表示增加字符，负数表示减少字符
-      characterChange = headerPrefix.length - oldHeaderPrefix.length;
+    let prefix = '';
+    if (isAtLineStart) {
+      prefix = '#'.repeat(level) + ' ';
     } else {
-      // 不是标题，在开头添加标题前缀
-      newText = headerPrefix + currentText;
-      
-      // 计算字符变化：增加了标题前缀的长度
-      characterChange = headerPrefix.length; // 总是正数，表示增加字符
+      // 如果不在行首，先换行
+      prefix = '\n' + '#'.repeat(level) + ' ';
     }
     
-    // 光标位置变化：
-    // - 增加字符（characterChange > 0）→ 光标位置增加（向右移动）
-    // - 减少字符（characterChange < 0）→ 光标位置减少（向左移动）
-    const newCursorPosition = cursorPosition + characterChange;
+    const newText = textBefore + prefix + textAfter;
+    const newPosition = currentPosition + prefix.length;
     
-    // 确保光标位置在有效范围内
-    const finalCursorPosition = Math.max(0, Math.min(newCursorPosition, newText.length));
+    if (onTextChange) {
+      onTextChange(newText, newPosition);
+    }
     
-
-    
-    onTextChange(newText, finalCursorPosition);
+    // 手动设置光标位置
+    setTimeout(() => {
+      if (textInputRef && textInputRef.setNativeProps) {
+        textInputRef.setNativeProps({
+          selection: { start: newPosition, end: newPosition }
+        });
+      }
+    }, 0);
   };
 
   const handleBoldPress = () => {
     if (!textInputRef || !onTextChange) return;
     
-    const boldMarker = '****';
-    const beforeCursor = currentText.substring(0, cursorPosition);
-    const afterCursor = currentText.substring(cursorPosition);
+    const currentPosition = cursorPosition;
+    const textBefore = currentText.substring(0, currentPosition);
+    const textAfter = currentText.substring(currentPosition);
     
-    const newText = beforeCursor + boldMarker + afterCursor;
-    const newCursorPosition = cursorPosition + 2; // 移动到第一个 ** 后面，第二个 ** 前面（中间位置）
+    const boldMarker = '**';
+    const newText = textBefore + boldMarker + boldMarker + textAfter;
+    const newPosition = currentPosition + boldMarker.length;
     
-
-    
-    onTextChange(newText, newCursorPosition);
+    onTextChange(newText, newPosition);
   };
 
   const handleItalicPress = () => {
     if (!textInputRef || !onTextChange) return;
     
-    const italicMarker = '**';
-    const beforeCursor = currentText.substring(0, cursorPosition);
-    const afterCursor = currentText.substring(cursorPosition);
+    const currentPosition = cursorPosition;
+    const textBefore = currentText.substring(0, currentPosition);
+    const textAfter = currentText.substring(currentPosition);
     
-    const newText = beforeCursor + italicMarker + afterCursor;
-    const newCursorPosition = cursorPosition + 1; // 移动到第一个 * 后面，第二个 * 前面（中间位置）
+    const italicMarker = '*';
+    const newText = textBefore + italicMarker + italicMarker + textAfter;
+    const newPosition = currentPosition + italicMarker.length;
     
-
-    
-    onTextChange(newText, newCursorPosition);
+    onTextChange(newText, newPosition);
   };
 
   const handleParagraphPress = () => {
     if (!textInputRef || !onTextChange) return;
     
-    // 检查当前文本是否是标题
-    const isCurrentlyHeader = currentText.match(/^#+\s/);
+    const currentPosition = cursorPosition;
+    const textBefore = currentText.substring(0, currentPosition);
+    const textAfter = currentText.substring(currentPosition);
+
+    // 检查是否在行首
+    const isAtLineStart = currentPosition === 0 || currentText[currentPosition - 1] === '\n';
     
-    if (isCurrentlyHeader) {
-      // 是标题，移除标题前缀转换为正文
-      const headerPrefix = isCurrentlyHeader[0]; // 例如 "## "
-      const newText = currentText.replace(/^#+\s/, '');
-      
-      // 计算字符变化：减少了标题前缀的长度
-      const characterChange = -headerPrefix.length;
-      
-      let newCursorPosition: number;
-      if (cursorPosition <= headerPrefix.length) {
-        // 光标在标题前缀内，移动到文本开头
-        newCursorPosition = 0;
-      } else {
-        // 光标在标题内容中，向前移动标题前缀的长度
-        newCursorPosition = cursorPosition + characterChange;
-      }
-      
-      // 确保光标位置在有效范围内
-      const finalCursorPosition = Math.max(0, Math.min(newCursorPosition, newText.length));
-      
-      onTextChange(newText, finalCursorPosition);
+    let newLineText = '';
+    if (isAtLineStart) {
+      newLineText = '\n';
+    } else {
+      newLineText = '\n\n';
     }
+    
+    const newText = textBefore + newLineText + textAfter;
+    const newPosition = currentPosition + newLineText.length;
+    
+    if (onTextChange) {
+      onTextChange(newText, newPosition);
+    }
+    
+    // 手动设置光标位置
+    setTimeout(() => {
+      if (textInputRef && textInputRef.setNativeProps) {
+        textInputRef.setNativeProps({
+          selection: { start: newPosition, end: newPosition }
+        });
+      }
+    }, 0);
   };
 
   const handleListPress = () => {
     if (!textInputRef || !onTextChange) return;
     
-    const listPrefix = '- ';
-    let newText: string;
-    let characterChange: number;
-    
-    // 检查当前文本是否已经是列表项
-    const isCurrentlyList = currentText.match(/^-\s/);
-    
-    if (isCurrentlyList) {
-      // 已经是列表，移除列表前缀转换为正文
-      newText = currentText.replace(/^-\s/, '');
-      characterChange = -listPrefix.length;
-    } else {
-      // 检查是否是标题，如果是先移除标题前缀
-      const isCurrentlyHeader = currentText.match(/^#+\s/);
-      
-      if (isCurrentlyHeader) {
-        // 是标题，移除标题前缀后添加列表前缀
-        const headerPrefix = isCurrentlyHeader[0];
-        const contentWithoutHeader = currentText.replace(/^#+\s/, '');
-        newText = listPrefix + contentWithoutHeader;
-        characterChange = listPrefix.length - headerPrefix.length;
-      } else {
-        // 不是标题也不是列表，在开头添加列表前缀
-        newText = listPrefix + currentText;
-        characterChange = listPrefix.length;
-      }
-    }
-    
-    // 光标位置变化
-    let newCursorPosition: number;
-    if (!isCurrentlyList && cursorPosition <= (currentText.match(/^#+\s/)?.[0]?.length || 0)) {
-      // 如果光标在标题前缀内，移动到列表前缀后
-      newCursorPosition = listPrefix.length;
-    } else {
-      newCursorPosition = cursorPosition + characterChange;
-    }
-    
-    // 确保光标位置在有效范围内
-    const finalCursorPosition = Math.max(0, Math.min(newCursorPosition, newText.length));
-    
+    const currentPosition = cursorPosition;
+    const textBefore = currentText.substring(0, currentPosition);
+    const textAfter = currentText.substring(currentPosition);
 
+    // 检查是否在行首
+    const isAtLineStart = currentPosition === 0 || currentText[currentPosition - 1] === '\n';
     
-    onTextChange(newText, finalCursorPosition);
+    let prefix = '';
+    if (isAtLineStart) {
+      prefix = '• ';
+    } else {
+      // 如果不在行首，先换行
+      prefix = '\n• ';
+    }
+    
+    const newText = textBefore + prefix + textAfter;
+    const newPosition = currentPosition + prefix.length;
+    
+    if (onTextChange) {
+      onTextChange(newText, newPosition);
+    }
+    
+    // 手动设置光标位置
+    setTimeout(() => {
+      if (textInputRef && textInputRef.setNativeProps) {
+        textInputRef.setNativeProps({
+          selection: { start: newPosition, end: newPosition }
+        });
+      }
+    }, 0);
   };
 
   const handleColorButtonPress = () => {
@@ -205,47 +190,44 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
   };
 
   const handleColorSelect = (color: typeof COLORS[0]) => {
-    setShowColorPanel(false);
-
     if (onBlockColorChange) {
       onBlockColorChange(color.color);
     }
+    setShowColorPanel(false);
   };
 
-  // 请求相册权限
   const requestStoragePermission = async (): Promise<boolean> => {
     if (Platform.OS === 'ios') {
-      return true; // iOS通过Info.plist配置权限
+      return true; // iOS不需要特殊权限
     }
 
     try {
       const granted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
         {
-          title: '相册访问权限',
-          message: '需要访问您的相册来选择图片',
+          title: '存储权限',
+          message: '应用需要访问您的存储来选择图片',
           buttonNeutral: '稍后询问',
           buttonNegative: '取消',
           buttonPositive: '确定',
-        },
+        }
       );
       return granted === PermissionsAndroid.RESULTS.GRANTED;
     } catch (err) {
-      console.warn('权限请求失败:', err);
+      console.warn(err);
       return false;
     }
   };
 
-  // 复制图片到本地存储
   const copyImageToLocalStorage = async (sourceUri: string): Promise<string> => {
     try {
-      // 创建图片存储目录
-      const imageDir = `${RNFS.DocumentDirectoryPath}/images`;
-      await RNFS.mkdir(imageDir);
+      // 创建目标文件夹
+      const destDir = `${RNFS.DocumentDirectoryPath}/images`;
+      await RNFS.mkdir(destDir);
 
-      // 生成唯一文件名
-      const fileName = `image_${Date.now()}.jpg`;
-      const destPath = `${imageDir}/${fileName}`;
+      // 生成文件名
+      const timestamp = Date.now();
+      const destPath = `${destDir}/image_${timestamp}.jpg`;
 
       // 复制文件
       await RNFS.copyFile(sourceUri, destPath);
@@ -315,11 +297,35 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
     }
   };
 
+  // 动态颜色定义
+  const dynamicColors = {
+    primary: theme.buttons.primary,
+    secondary: theme.texts.secondary,
+    success: theme.buttons.success,
+    danger: theme.buttons.danger,
+    warning: '#fd7e14',
+    info: '#17a2b8',
+    purple: '#6f42c1',
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={[
+      styles.container,
+      {
+        backgroundColor: theme.backgrounds.toolbar,
+        borderTopColor: theme.borders.primary,
+      }
+    ]}>
       {/* 颜色面板 */}
       {showColorPanel && (
-        <View style={styles.colorPanel}>
+        <View style={[
+          styles.colorPanel,
+          {
+            backgroundColor: theme.backgrounds.tertiary,
+            borderTopColor: theme.borders.secondary,
+            borderBottomColor: theme.borders.secondary,
+          }
+        ]}>
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false}
@@ -330,7 +336,13 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
             {COLORS.map((color, index) => (
               <TouchableOpacity 
                 key={index}
-                style={[styles.colorButton, { backgroundColor: color.color }]}
+                style={[
+                  styles.colorButton, 
+                  { 
+                    backgroundColor: color.color,
+                    borderColor: theme.backgrounds.secondary
+                  }
+                ]}
                 onPress={() => handleColorSelect(color)}
               />
             ))}
@@ -350,103 +362,183 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
       >
         {/* Plus按钮 - 添加新block */}
         <TouchableOpacity 
-          style={[styles.button, styles.plusButton]} 
+          style={[
+            styles.button, 
+            styles.plusButton,
+            {
+              backgroundColor: theme.special.highlight,
+              borderColor: dynamicColors.primary,
+            }
+          ]} 
           onPress={onAddNewBlock}
         >
-          <FontAwesome5 name="plus" size={16} color="#007bff" iconStyle="solid" />
+          <FontAwesome5 name="plus" size={16} color={dynamicColors.primary} iconStyle="solid" />
         </TouchableOpacity>
 
         {/* 分隔线 */}
-        <View style={styles.separator} />
+        <View style={[styles.separator, { backgroundColor: theme.borders.secondary }]} />
 
         {/* 标题按钮 */}
         <TouchableOpacity 
-          style={styles.button} 
+          style={[
+            styles.button,
+            {
+              backgroundColor: theme.backgrounds.secondary,
+              borderColor: theme.borders.secondary,
+            }
+          ]} 
           onPress={() => handleHeaderPress(1)}
         >
-          <FontAwesome5 name="heading" size={18} color="#6f42c1" iconStyle="solid" />
+          <FontAwesome5 name="heading" size={18} color={dynamicColors.purple} iconStyle="solid" />
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.button} 
+          style={[
+            styles.button,
+            {
+              backgroundColor: theme.backgrounds.secondary,
+              borderColor: theme.borders.secondary,
+            }
+          ]} 
           onPress={() => handleHeaderPress(2)}
         >
-          <FontAwesome5 name="heading" size={16} color="#6f42c1" iconStyle="solid" />
+          <FontAwesome5 name="heading" size={16} color={dynamicColors.purple} iconStyle="solid" />
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.button} 
+          style={[
+            styles.button,
+            {
+              backgroundColor: theme.backgrounds.secondary,
+              borderColor: theme.borders.secondary,
+            }
+          ]} 
           onPress={() => handleHeaderPress(3)}
         >
-          <FontAwesome5 name="heading" size={14} color="#6f42c1" iconStyle="solid" />
+          <FontAwesome5 name="heading" size={14} color={dynamicColors.purple} iconStyle="solid" />
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.button} 
+          style={[
+            styles.button,
+            {
+              backgroundColor: theme.backgrounds.secondary,
+              borderColor: theme.borders.secondary,
+            }
+          ]} 
           onPress={() => handleHeaderPress(4)}
         >
-          <FontAwesome5 name="heading" size={12} color="#6f42c1" iconStyle="solid" />
+          <FontAwesome5 name="heading" size={12} color={dynamicColors.purple} iconStyle="solid" />
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.button} 
+          style={[
+            styles.button,
+            {
+              backgroundColor: theme.backgrounds.secondary,
+              borderColor: theme.borders.secondary,
+            }
+          ]} 
           onPress={() => handleHeaderPress(5)}
         >
-          <FontAwesome5 name="heading" size={10} color="#6f42c1" iconStyle="solid" />
+          <FontAwesome5 name="heading" size={10} color={dynamicColors.purple} iconStyle="solid" />
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.button} 
+          style={[
+            styles.button,
+            {
+              backgroundColor: theme.backgrounds.secondary,
+              borderColor: theme.borders.secondary,
+            }
+          ]} 
           onPress={handleParagraphPress}
         >
-          <FontAwesome5 name="align-left" size={14} color="#6c757d" iconStyle="solid" />
+          <FontAwesome5 name="align-left" size={14} color={dynamicColors.secondary} iconStyle="solid" />
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.button} 
+          style={[
+            styles.button,
+            {
+              backgroundColor: theme.backgrounds.secondary,
+              borderColor: theme.borders.secondary,
+            }
+          ]} 
           onPress={handleListPress}
         >
-          <Feather name="list" size={16} color="#28a745" />
+          <Feather name="list" size={16} color={dynamicColors.success} />
         </TouchableOpacity>
 
         {/* 分隔线 */}
-        <View style={styles.separator} />
+        <View style={[styles.separator, { backgroundColor: theme.borders.secondary }]} />
 
         {/* 格式化按钮 */}
         <TouchableOpacity 
-          style={styles.button} 
+          style={[
+            styles.button,
+            {
+              backgroundColor: theme.backgrounds.secondary,
+              borderColor: theme.borders.secondary,
+            }
+          ]} 
           onPress={handleBoldPress}
         >
-          <FontAwesome5 name="bold" size={14} color="#dc3545" iconStyle="solid" />
+          <FontAwesome5 name="bold" size={14} color={dynamicColors.danger} iconStyle="solid" />
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.button} 
+          style={[
+            styles.button,
+            {
+              backgroundColor: theme.backgrounds.secondary,
+              borderColor: theme.borders.secondary,
+            }
+          ]} 
           onPress={handleItalicPress}
         >
-          <FontAwesome5 name="italic" size={14} color="#fd7e14" iconStyle="solid" />
+          <FontAwesome5 name="italic" size={14} color={dynamicColors.warning} iconStyle="solid" />
         </TouchableOpacity>
 
         {/* 颜色按钮 */}
         <TouchableOpacity 
           style={[
-            styles.button, 
-            showColorPanel && styles.activeButton
+            styles.button,
+            {
+              backgroundColor: theme.backgrounds.secondary,
+              borderColor: theme.borders.secondary,
+            },
+            showColorPanel && {
+              backgroundColor: theme.backgrounds.tertiary,
+              borderColor: dynamicColors.primary,
+            }
           ]} 
           onPress={handleColorButtonPress}
         >
-          <View style={[styles.colorIndicator, { backgroundColor: selectedColor.color }]} />
+          <View style={[
+            styles.colorIndicator, 
+            { 
+              backgroundColor: selectedColor.color,
+              borderColor: theme.borders.secondary
+            }
+          ]} />
         </TouchableOpacity>
 
         {/* 分隔线 */}
-        <View style={styles.separator} />
+        <View style={[styles.separator, { backgroundColor: theme.borders.secondary }]} />
 
         {/* 图片选择按钮 */}
         <TouchableOpacity 
-          style={styles.button} 
+          style={[
+            styles.button,
+            {
+              backgroundColor: theme.backgrounds.secondary,
+              borderColor: theme.borders.secondary,
+            }
+          ]} 
           onPress={handleImageSelect}
         >
-          <FontAwesome5 name="image" size={16} color="#17a2b8" iconStyle="solid" />
+          <FontAwesome5 name="image" size={16} color={dynamicColors.info} iconStyle="solid" />
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -455,9 +547,7 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#f8f9fa',
     borderTopWidth: 1,
-    borderTopColor: '#e9ecef',
     paddingVertical: 0,
     marginBottom: -1,
   },
@@ -470,46 +560,19 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     marginHorizontal: 4,
-    backgroundColor: '#fff',
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#dee2e6',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  buttonText: {
-    fontSize: 14,
-    color: '#495057',
-    fontWeight: '600',
-  },
-  headerText: {
-    fontSize: 12,
-    color: '#6f42c1',
-  },
-  boldText: {
-    fontWeight: 'bold',
-    color: '#dc3545',
-  },
-  italicText: {
-    fontStyle: 'italic',
-    color: '#fd7e14',
-  },
-  paragraphText: {
-    fontSize: 12,
-    color: '#6c757d',
   },
   separator: {
     width: 1,
     height: 20,
-    backgroundColor: '#dee2e6',
     marginHorizontal: 8,
   },
   colorPanel: {
-    backgroundColor: '#f1f3f4',
     borderTopWidth: 1,
-    borderTopColor: '#dee2e6',
     borderBottomWidth: 1,
-    borderBottomColor: '#dee2e6',
     paddingVertical: 8,
   },
   colorPanelContent: {
@@ -522,28 +585,14 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     marginHorizontal: 4,
     borderWidth: 2,
-    borderColor: '#fff',
   },
   colorIndicator: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#dee2e6',
-  },
-  activeButton: {
-    backgroundColor: '#e9ecef',
-    borderColor: '#007bff',
   },
   plusButton: {
-    backgroundColor: '#f0f8ff',
-    borderColor: '#007bff',
-  },
-  listText: {
-    fontSize: 12,
-    color: '#28a745',
-    fontWeight: 'bold',
-    lineHeight: 12,
-    textAlign: 'center',
+    // 特殊样式将通过动态样式应用
   },
 }); 

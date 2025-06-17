@@ -3,14 +3,15 @@ import {
   View,
   Text,
   StyleSheet,
-  StatusBar,
   Platform,
-  Alert,
   TouchableOpacity,
+  Alert,
+  StatusBar,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../hooks/useTheme.js';
 import { RootStackParamList, ContentType } from '../Types';
 import { ideaDB } from '../utils/IdeaDatabase';
 import SwipeableCalendar from '../components/SwipeableCalendar';
@@ -21,12 +22,14 @@ type HomeNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 export default function Home() {
   const { t, i18n } = useTranslation();
+  // @ts-ignore
+  const { theme, getThemedStyle } = useTheme();
   const navigation = useNavigation<HomeNavigationProp>();
   const [ideas, setIdeas] = useState<IdeaItem[]>([]);
   const [currentDate, setCurrentDate] = useState('');
   const [currentDateString, setCurrentDateString] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     initializeApp();
@@ -34,8 +37,6 @@ export default function Home() {
 
   const initializeApp = async () => {
     try {
-      setIsLoading(true);
-      
       // 初始化数据库
       await ideaDB.initialize();
       
@@ -127,18 +128,38 @@ export default function Home() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <Text style={styles.loadingText}>{t('common.loading')}</Text>
+      <View style={[
+        styles.container, 
+        styles.loadingContainer,
+        { backgroundColor: theme.backgrounds.primary }
+      ]}>
+        <Text style={[
+          styles.loadingText,
+          { color: theme.texts.secondary }
+        ]}>
+          {t('common.loading')}
+        </Text>
       </View>
     );
   }
 
+  const statusBarStyle = getThemedStyle.statusBar();
+
   return (
-    <View style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
+    <View style={[styles.container, { backgroundColor: theme.backgrounds.primary }]}>
+        <StatusBar 
+          barStyle={statusBarStyle.barStyle}
+          backgroundColor={statusBarStyle.backgroundColor}
+        />
         
         {/* 日期头部 */}
-        <View style={styles.header}>
+        <View style={[
+          styles.header,
+          { 
+            backgroundColor: theme.backgrounds.primary,
+            borderBottomColor: theme.borders.primary
+          }
+        ]}>
           <View style={styles.headerRow}>
             {/* 日历按钮 */}
             <TouchableOpacity 
@@ -146,14 +167,16 @@ export default function Home() {
               onPress={() => setShowCalendarModal(true)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Text style={styles.calendarIcon}>📅</Text>
+              <Text style={[styles.calendarIcon, { color: theme.texts.secondary }]}>📅</Text>
             </TouchableOpacity>
             
             {/* 日期与统计信息的容器 */}
             <View style={styles.centerContent}>
-              <Text style={styles.dateText}>{currentDate}</Text>
+              <Text style={[styles.dateText, { color: theme.texts.primary }]}>
+                {currentDate}
+              </Text>
               <View style={styles.statsContainer}>
-                <Text style={styles.statsText}>
+                <Text style={[styles.statsText, { color: theme.texts.secondary }]}>
                   📝{categoryStats.todoCompleted}/{categoryStats.todo} | 💡{categoryStats.idea} | 📚{categoryStats.learning} | 📄{categoryStats.note}
                 </Text>
               </View>
@@ -165,7 +188,7 @@ export default function Home() {
               onPress={() => navigation.navigate('Search')}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Text style={styles.searchIcon}>🔍</Text>
+              <Text style={[styles.searchIcon, { color: theme.texts.secondary }]}>🔍</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -193,7 +216,6 @@ export default function Home() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
   },
   loadingContainer: {
     justifyContent: 'center',
@@ -201,15 +223,12 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#6c757d',
   },
   header: {
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingHorizontal: 24,
     paddingBottom: 20,
-    backgroundColor: '#f8f9fa',
     borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
   },
   headerRow: {
     flexDirection: 'row',
@@ -225,7 +244,6 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#343a40',
     textAlign: 'center',
   },
   calendarButton: {
@@ -237,7 +255,6 @@ const styles = StyleSheet.create({
   },
   calendarIcon: {
     fontSize: 36,
-    color: '#6c757d',
   },
   statsContainer: {
     marginTop: 8,
@@ -245,7 +262,6 @@ const styles = StyleSheet.create({
   },
   statsText: {
     fontSize: 12,
-    color: '#6c757d',
     textAlign: 'center',
   },
   searchButton: {
@@ -257,6 +273,5 @@ const styles = StyleSheet.create({
   },
   searchIcon: {
     fontSize: 28,
-    color: '#6c757d',
   },
 });

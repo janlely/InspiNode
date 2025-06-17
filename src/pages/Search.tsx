@@ -16,8 +16,15 @@ import Feather from '@react-native-vector-icons/feather';
 import { useTranslation } from 'react-i18next';
 import { ideaDB } from '../utils/IdeaDatabase';
 import IdeaList, { IdeaItem } from '../components/IdeaList';
-import { ContentType } from '../Types';
+import { ContentType, RootStackParamList } from '../Types';
 import { CONTENT_TYPES, getFinalContentType } from '../utils/ContentTypeUtils';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Icon from '@react-native-vector-icons/fontawesome';
+// @ts-ignore
+import { useTheme } from '../hooks/useTheme.js';
+
+type SearchNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Search'>;
 
 type DateFilterType = 'all' | 'recent1month' | 'recent3months' | 'recent6months' | 'custom';
 
@@ -34,6 +41,9 @@ interface FilterCriteria {
 
 export default function Search() {
   const { t } = useTranslation();
+  // @ts-ignore
+  const { theme, getThemedStyle } = useTheme();
+  const navigation = useNavigation<SearchNavigationProp>();
   const [filteredIdeas, setFilteredIdeas] = useState<IdeaItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -175,10 +185,6 @@ export default function Search() {
       return newFilters;
     });
   };
-
-
-
-
 
   // 打开筛选模态框
   const openFilterModal = () => {
@@ -518,32 +524,65 @@ export default function Search() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <Text style={styles.loadingText}>搜索中...</Text>
+      <View style={[
+        styles.container, 
+        styles.loadingContainer,
+        { backgroundColor: theme.backgrounds.primary }
+      ]}>
+        <Text style={[
+          styles.loadingText,
+          { color: theme.texts.secondary }
+        ]}>
+          搜索中...
+        </Text>
       </View>
     );
   }
 
+  const statusBarStyle = getThemedStyle.statusBar();
+
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
+    <View style={[styles.container, { backgroundColor: theme.backgrounds.primary }]}>
+      <StatusBar 
+        barStyle={statusBarStyle.barStyle}
+        backgroundColor={statusBarStyle.backgroundColor}
+      />
       
       {/* 搜索头部 */}
-      <View style={styles.header}>
+      <View style={[
+        styles.header,
+        {
+          backgroundColor: theme.backgrounds.primary,
+          borderBottomColor: theme.borders.primary,
+        }
+      ]}>
         <View style={styles.searchContainer}>
           <TextInput
-            style={styles.searchInput}
+            style={[
+              styles.searchInput,
+              {
+                backgroundColor: theme.backgrounds.secondary,
+                borderColor: theme.borders.input,
+                color: theme.texts.primary,
+              }
+            ]}
             placeholder={t('placeholders.searchIdeas')}
-            placeholderTextColor="#999"
+            placeholderTextColor={theme.texts.tertiary}
             value={filters.keyword}
             onChangeText={handleKeywordChange}
             returnKeyType="search"
           />
           <TouchableOpacity
-            style={styles.filterButton}
+            style={[
+              styles.filterButton,
+              {
+                backgroundColor: theme.backgrounds.secondary,
+                borderColor: theme.borders.input,
+              }
+            ]}
             onPress={openFilterModal}
           >
-            <Feather name="filter" size={20} color="#495057" />
+            <Feather name="filter" size={20} color={theme.texts.secondary} />
           </TouchableOpacity>
         </View>
         
@@ -555,8 +594,14 @@ export default function Search() {
             
             {/* 类型筛选 */}
             {filters.categories.length > 0 && (
-              <View style={styles.activeFilterTag}>
-                <Text style={styles.activeFilterText}>
+              <View style={[
+                styles.activeFilterTag,
+                { backgroundColor: theme.special.highlight }
+              ]}>
+                <Text style={[
+                  styles.activeFilterText,
+                  { color: theme.buttons.primary }
+                ]}>
                   类型: {filters.categories.map(cat => CONTENT_TYPES[cat].name).join(', ')}
                 </Text>
                 <TouchableOpacity
@@ -565,17 +610,31 @@ export default function Search() {
                     setFilters(newFilters);
                     performSearch(newFilters);
                   }}
-                  style={styles.removeFilterButton}
+                  style={[
+                    styles.removeFilterButton,
+                    { backgroundColor: theme.buttons.primary }
+                  ]}
                 >
-                  <Text style={styles.removeFilterText}>×</Text>
+                  <Text style={[
+                    styles.removeFilterText,
+                    { color: theme.buttons.primaryText }
+                  ]}>
+                    ×
+                  </Text>
                 </TouchableOpacity>
               </View>
             )}
             
             {/* 时间筛选 */}
             {filters.dateFilterType !== 'all' && (
-              <View style={styles.activeFilterTag}>
-                <Text style={styles.activeFilterText}>
+              <View style={[
+                styles.activeFilterTag,
+                { backgroundColor: theme.special.highlight }
+              ]}>
+                <Text style={[
+                  styles.activeFilterText,
+                  { color: theme.buttons.primary }
+                ]}>
                   时间: {getDateFilterDisplayText()}
                 </Text>
                 <TouchableOpacity
@@ -584,17 +643,31 @@ export default function Search() {
                     setFilters(newFilters);
                     performSearch(newFilters);
                   }}
-                  style={styles.removeFilterButton}
+                  style={[
+                    styles.removeFilterButton,
+                    { backgroundColor: theme.buttons.primary }
+                  ]}
                 >
-                  <Text style={styles.removeFilterText}>×</Text>
+                  <Text style={[
+                    styles.removeFilterText,
+                    { color: theme.buttons.primaryText }
+                  ]}>
+                    ×
+                  </Text>
                 </TouchableOpacity>
               </View>
             )}
             
             {/* TODO完成状态筛选 */}
             {filters.completedFilter !== 'all' && filters.categories.includes(ContentType.TODO) && (
-              <View style={styles.activeFilterTag}>
-                <Text style={styles.activeFilterText}>
+              <View style={[
+                styles.activeFilterTag,
+                { backgroundColor: theme.special.highlight }
+              ]}>
+                <Text style={[
+                  styles.activeFilterText,
+                  { color: theme.buttons.primary }
+                ]}>
                   状态: {filters.completedFilter === 'completed' ? '已完成' : '未完成'}
                 </Text>
                 <TouchableOpacity
@@ -603,9 +676,17 @@ export default function Search() {
                     setFilters(newFilters);
                     performSearch(newFilters);
                   }}
-                  style={styles.removeFilterButton}
+                  style={[
+                    styles.removeFilterButton,
+                    { backgroundColor: theme.buttons.primary }
+                  ]}
                 >
-                  <Text style={styles.removeFilterText}>×</Text>
+                  <Text style={[
+                    styles.removeFilterText,
+                    { color: theme.buttons.primaryText }
+                  ]}>
+                    ×
+                  </Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -623,9 +704,17 @@ export default function Search() {
                 setFilters(newFilters);
                 performSearch(newFilters);
               }}
-              style={styles.clearAllFiltersButton}
+              style={[
+                styles.clearAllFiltersButton,
+                { backgroundColor: theme.buttons.danger }
+              ]}
             >
-              <Text style={styles.clearAllFiltersText}>清除所有</Text>
+              <Text style={[
+                styles.clearAllFiltersText,
+                { color: theme.buttons.dangerText }
+              ]}>
+                清除所有
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -650,7 +739,6 @@ export default function Search() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
   },
   loadingContainer: {
     justifyContent: 'center',
@@ -658,15 +746,12 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#6c757d',
   },
   header: {
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingHorizontal: 24,
     paddingBottom: 20,
-    backgroundColor: '#f8f9fa',
     borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -676,23 +761,19 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     height: 44,
-    backgroundColor: '#ffffff',
     borderRadius: 12,
     paddingHorizontal: 16,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#dee2e6',
     marginRight: 12,
   },
   filterButton: {
     width: 44,
     height: 44,
-    backgroundColor: '#ffffff',
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#dee2e6',
     position: 'relative',
   },
 
@@ -700,7 +781,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -6,
     right: -6,
-    backgroundColor: '#dc3545',
     borderRadius: 10,
     width: 20,
     height: 20,
@@ -708,7 +788,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   filterBadgeText: {
-    color: '#ffffff',
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -716,11 +795,9 @@ const styles = StyleSheet.create({
   // 模态框样式
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   filterModalContent: {
-    backgroundColor: '#ffffff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '80%',
@@ -731,12 +808,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#343a40',
   },
   closeButton: {
     width: 30,
@@ -746,7 +821,6 @@ const styles = StyleSheet.create({
   },
   closeButtonText: {
     fontSize: 18,
-    color: '#6c757d',
   },
   filterContent: {
     padding: 20,
@@ -996,7 +1070,6 @@ const styles = StyleSheet.create({
   activeFilterTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#e3f2fd',
     borderRadius: 12,
     paddingLeft: 8,
     paddingRight: 2,
@@ -1006,24 +1079,20 @@ const styles = StyleSheet.create({
   },
   activeFilterText: {
     fontSize: 11,
-    color: '#1976d2',
     marginRight: 4,
   },
   removeFilterButton: {
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#1976d2',
     justifyContent: 'center',
     alignItems: 'center',
   },
   removeFilterText: {
-    color: '#ffffff',
     fontSize: 10,
     fontWeight: 'bold',
   },
   clearAllFiltersButton: {
-    backgroundColor: '#dc3545',
     borderRadius: 12,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -1032,7 +1101,6 @@ const styles = StyleSheet.create({
   },
   clearAllFiltersText: {
     fontSize: 11,
-    color: '#ffffff',
     fontWeight: '500',
   },
 

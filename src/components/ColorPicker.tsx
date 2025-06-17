@@ -7,6 +7,8 @@ import {
   ScrollView,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+// @ts-ignore
+import { useTheme } from '../hooks/useTheme.js';
 
 interface ColorPickerProps {
   visible: boolean;
@@ -22,6 +24,8 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
   height,
 }) => {
   const { t } = useTranslation();
+  // @ts-ignore
+  const { theme } = useTheme();
   
   // 预定义的颜色列表
   const COLORS = [
@@ -48,7 +52,11 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
   };
 
   return (
-    <View style={[styles.panel, height ? { height } : undefined]}>
+    <View style={[
+      styles.panel, 
+      { backgroundColor: theme.backgrounds.secondary },
+      height ? { height } : undefined
+    ]}>
       {/* 颜色网格 */}
       <ScrollView style={styles.colorGrid} showsVerticalScrollIndicator={false}>
         <View style={styles.colorRow}>
@@ -62,10 +70,18 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
               <View 
                 style={[
                   styles.colorCircle,
-                  { backgroundColor: color.display }
+                  { 
+                    backgroundColor: color.display,
+                    borderColor: theme.borders.secondary
+                  }
                 ]} 
               />
-              <Text style={styles.colorName}>{color.name}</Text>
+              <Text style={[
+                styles.colorName,
+                { color: theme.texts.secondary }
+              ]}>
+                {color.name}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -76,7 +92,6 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
 
 const styles = StyleSheet.create({
   panel: {
-    backgroundColor: '#ffffff',
     width: '100%',
     height: 280, // 固定高度，接近键盘高度
   },
@@ -103,12 +118,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginBottom: 4,
     borderWidth: 2,
-    borderColor: '#e9ecef',
   },
   colorName: {
     fontSize: 12,
-    color: '#666',
     textAlign: 'center',
   },
-
 }); 

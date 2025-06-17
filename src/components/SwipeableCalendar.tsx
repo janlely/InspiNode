@@ -10,26 +10,42 @@ import {
 } from 'react-native';
 import { Calendar, CalendarList, DateData, LocaleConfig } from 'react-native-calendars';
 import { useTranslation } from 'react-i18next';
+// @ts-ignore
+import { useTheme } from '../hooks/useTheme.js';
 import { ideaDB } from '../utils/IdeaDatabase';
 
 // 配置本地化，确保周日是第一天
 const configureLocale = (language: string, t: any) => {
+  // 安全检查：确保翻译数据存在且为数组
+  const months = t('calendar.months', { returnObjects: true });
+  const monthsShort = t('calendar.monthsShort', { returnObjects: true });
+  const dayNames = t('calendar.dayNames', { returnObjects: true });
+  const dayNamesShort = t('calendar.dayNamesShort', { returnObjects: true });
+  const today = t('common.today');
+
+  // 检查所有必需的翻译是否存在且为数组
+  if (!Array.isArray(months) || !Array.isArray(monthsShort) || 
+      !Array.isArray(dayNames) || !Array.isArray(dayNamesShort)) {
+    console.warn('Calendar translations not ready, using fallback');
+    return;
+  }
+
   if (language === 'zh') {
     LocaleConfig.locales['zh'] = {
-      monthNames: t('calendar.months'),
-      monthNamesShort: t('calendar.monthsShort'),
-      dayNames: t('calendar.dayNames'),
-      dayNamesShort: t('calendar.dayNamesShort'),
-      today: t('common.today')
+      monthNames: months,
+      monthNamesShort: monthsShort,
+      dayNames: dayNames,
+      dayNamesShort: dayNamesShort,
+      today: today
     };
     LocaleConfig.defaultLocale = 'zh';
   } else {
     LocaleConfig.locales['en'] = {
-      monthNames: t('calendar.months'),
-      monthNamesShort: t('calendar.monthsShort'),
-      dayNames: t('calendar.dayNames'),
-      dayNamesShort: t('calendar.dayNamesShort'),
-      today: t('common.today')
+      monthNames: months,
+      monthNamesShort: monthsShort,
+      dayNames: dayNames,
+      dayNamesShort: dayNamesShort,
+      today: today
     };
     LocaleConfig.defaultLocale = 'en';
   }
@@ -49,6 +65,8 @@ const SwipeableCalendar: React.FC<SwipeableCalendarProps> = ({
   onDateSelect,
 }) => {
   const { t, i18n } = useTranslation();
+  // @ts-ignore
+  const { theme } = useTheme();
   const [datesWithIdeas, setDatesWithIdeas] = useState<{ [key: string]: string[] }>({});
   const [isLoading, setIsLoading] = useState(false);
   
@@ -119,8 +137,8 @@ const SwipeableCalendar: React.FC<SwipeableCalendarProps> = ({
     // 标记今天
     marks[currentDateString] = {
       selected: true,
-      selectedColor: '#2196f3',
-      selectedTextColor: '#ffffff',
+      selectedColor: theme.special.calendar.selectedBg,
+      selectedTextColor: theme.special.calendar.selectedText,
     };
     
     // 标记有想法的日期
@@ -129,25 +147,25 @@ const SwipeableCalendar: React.FC<SwipeableCalendarProps> = ({
         // 今天且有想法 - 组合样式
         marks[dateString] = {
           selected: true,
-          selectedColor: '#2196f3',
-          selectedTextColor: '#ffffff',
+          selectedColor: theme.special.calendar.selectedBg,
+          selectedTextColor: theme.special.calendar.selectedText,
           marked: true,
-          dotColor: '#ff5722',
+          dotColor: theme.special.calendar.markedDot,
         };
       } else {
-        // 只有想法 - 蓝色背景
+        // 只有想法 - 浅色背景
         marks[dateString] = {
           selected: true,
-          selectedColor: '#e3f2fd',
-          selectedTextColor: '#1976d2',
+          selectedColor: theme.special.highlight,
+          selectedTextColor: theme.special.calendar.todayText,
           marked: true,
-          dotColor: '#ff5722',
+          dotColor: theme.special.calendar.markedDot,
         };
       }
     });
     
     return marks;
-  }, [datesWithIdeas, currentDateString]);
+  }, [datesWithIdeas, currentDateString, theme]);
 
   // 处理日期点击
   const onDayPress = useCallback((day: DateData) => {
@@ -167,24 +185,64 @@ const SwipeableCalendar: React.FC<SwipeableCalendarProps> = ({
     return null;
   }
 
+  // 日历主题配置
+  const calendarTheme = {
+    backgroundColor: theme.backgrounds.calendar,
+    calendarBackground: theme.backgrounds.calendar,
+    textSectionTitleColor: theme.texts.secondary,
+    selectedDayBackgroundColor: theme.special.calendar.selectedBg,
+    selectedDayTextColor: theme.special.calendar.selectedText,
+    todayTextColor: theme.special.calendar.todayText,
+    dayTextColor: theme.texts.primary,
+    textDisabledColor: theme.texts.disabled,
+    dotColor: theme.special.calendar.markedDot,
+    selectedDotColor: theme.special.calendar.selectedText,
+    arrowColor: theme.special.calendar.selectedBg,
+    disabledArrowColor: theme.texts.disabled,
+    monthTextColor: theme.texts.primary,
+    indicatorColor: theme.special.calendar.selectedBg,
+    textDayFontSize: 16,
+    textMonthFontSize: 18,
+    textDayHeaderFontSize: 14,
+  };
+
   // 使用绝对定位的View替代Modal
   return (
-    <View style={styles.overlay}>
+    <View style={[styles.overlay, { backgroundColor: theme.backgrounds.modal }]}>
       <Pressable 
         style={styles.overlayPressable} 
         onPress={onClose}
       >
         <Pressable 
-          style={styles.calendarModalContent}
+          style={[
+            styles.calendarModalContent,
+            {
+              backgroundColor: theme.backgrounds.secondary,
+              shadowColor: theme.special.shadow,
+            }
+          ]}
           onPress={(e) => e.stopPropagation()}
         >
           {isLoading && (
-            <View style={styles.loadingIndicator}>
-              <Text style={styles.loadingText}>{t('common.loading')}</Text>
+            <View style={[
+              styles.loadingIndicator,
+              { backgroundColor: `${theme.backgrounds.secondary}90` }
+            ]}>
+              <Text style={[
+                styles.loadingText,
+                { color: theme.texts.secondary }
+              ]}>
+                {t('common.loading')}
+              </Text>
             </View>
           )}
           
-          <Text style={styles.title}>{t('calendar.title')}</Text>
+          <Text style={[
+            styles.title,
+            { color: theme.texts.primary }
+          ]}>
+            {t('calendar.title')}
+          </Text>
           
           <Calendar
             current={currentDateString}
@@ -193,40 +251,31 @@ const SwipeableCalendar: React.FC<SwipeableCalendarProps> = ({
             markedDates={markedDates}
             enableSwipeMonths={true}
             maxDate={new Date().toISOString().split('T')[0]}
-            theme={{
-              backgroundColor: '#ffffff',
-              calendarBackground: '#ffffff',
-              textSectionTitleColor: '#6c757d',
-              selectedDayBackgroundColor: '#2196f3',
-              selectedDayTextColor: '#ffffff',
-              todayTextColor: '#2196f3',
-              dayTextColor: '#343a40',
-              textDisabledColor: '#d0d0d0',
-              dotColor: '#ff5722',
-              selectedDotColor: '#ffffff',
-              arrowColor: '#2196f3',
-              disabledArrowColor: '#d3d3d3',
-              monthTextColor: '#343a40',
-              indicatorColor: '#2196f3',
-              textDayFontSize: 16,
-              textMonthFontSize: 18,
-              textDayHeaderFontSize: 14,
-            }}
+            theme={calendarTheme}
             monthFormat={t('calendar.monthFormat')}
             firstDay={0}
             hideExtraDays={false}
             style={styles.calendar}
           />
           
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Text style={styles.closeButtonText}>{t('common.close')}</Text>
+          <TouchableOpacity 
+            style={[
+              styles.closeButton,
+              { backgroundColor: theme.buttons.primary }
+            ]} 
+            onPress={onClose}
+          >
+            <Text style={[
+              styles.closeButtonText,
+              { color: theme.buttons.primaryText }
+            ]}>
+              {t('common.close')}
+            </Text>
           </TouchableOpacity>
         </Pressable>
       </Pressable>
     </View>
   );
-
-
 };
 
 const styles = StyleSheet.create({
@@ -236,7 +285,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 9999,
@@ -248,12 +296,10 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   calendarModalContent: {
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 20,
     width: '95%',
     maxHeight: '80%',
-    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -265,7 +311,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#343a40',
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -274,7 +319,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   closeButton: {
-    backgroundColor: '#007AFF',
     borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 20,
@@ -282,7 +326,6 @@ const styles = StyleSheet.create({
   },
   closeButtonText: {
     fontSize: 16,
-    color: 'white',
     fontWeight: '600',
   },
   loadingIndicator: {
@@ -291,7 +334,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
@@ -299,7 +341,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#666',
   },
 });
 
