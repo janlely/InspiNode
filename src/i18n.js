@@ -18,6 +18,13 @@ const resources = {
         recordIdea: 'Record your thoughts...'
       },
 
+      // Buttons
+      buttons: {
+        add: 'Add',
+        recording: '🔴 Recording...',
+        pressToRecord: '🎤 Press to Record'
+      },
+
       // Colors
       colors: {
         default: 'Default',
@@ -93,6 +100,13 @@ const resources = {
       placeholders: {
         searchIdeas: '搜索想法...',
         recordIdea: '记录你的想法...'
+      },
+
+      // Buttons
+      buttons: {
+        add: '添加',
+        recording: '🔴 录音中...',
+        pressToRecord: '🎤 长按录音'
       },
 
       // Colors

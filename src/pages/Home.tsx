@@ -353,12 +353,12 @@ export default function Home() {
               onPressOut={stopRecording}
               delayLongPress={100}
             >
-              <Text style={[
-                styles.voiceButtonText,
-                { color: isRecording ? theme.buttons.dangerText : theme.texts.secondary }
-              ]}>
-                {isRecording ? '🔴 录音中...' : '🎤 长按录音'}
-              </Text>
+                               <Text style={[
+                   styles.voiceButtonText,
+                   { color: isRecording ? theme.buttons.dangerText : theme.texts.secondary }
+                 ]}>
+                   {isRecording ? t('buttons.recording') : t('buttons.pressToRecord')}
+                 </Text>
             </Pressable>
           )}
         </View>
@@ -376,14 +376,14 @@ export default function Home() {
             disabled={!inputText.trim()}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={[
-              styles.sendButtonText,
-              {
-                color: inputText.trim() ? theme.buttons.primaryText : theme.buttons.disabledText,
-              }
-            ]}>
-              发送
-            </Text>
+                         <Text style={[
+               styles.sendButtonText,
+               {
+                 color: inputText.trim() ? theme.buttons.primaryText : theme.buttons.disabledText,
+               }
+             ]}>
+               {t('buttons.add')}
+             </Text>
           </TouchableOpacity>
                 )}
       </Animated.View>
