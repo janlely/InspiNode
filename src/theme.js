@@ -70,13 +70,13 @@ export const lightTheme = {
 export const darkTheme = {
   // 背景颜色
   backgrounds: {
-    primary: '#121212',      // 主背景色
-    secondary: '#1e1e1e',    // 卡片/容器背景色
-    tertiary: '#333333',     // 分割线/边框背景
+    primary: '#1c1c1e',      // 主背景色 (经典深炭色)
+    secondary: '#2c2c2e',    // 卡片/容器背景色 (中等炭灰)
+    tertiary: '#3a3a3c',     // 分割线/边框背景 (较亮炭灰)
     modal: 'rgba(0, 0, 0, 0.8)', // 模态框遮罩
-    toolbar: '#1e1e1e',      // 工具栏背景
-    calendar: '#1e1e1e',     // 日历背景
-    error: '#000000'         // 错误页面背景
+    toolbar: '#2c2c2e',      // 工具栏背景
+    calendar: '#2c2c2e',     // 日历背景
+    error: '#1c1c1e'         // 错误页面背景
   },
 
   // 文字颜色
@@ -93,37 +93,37 @@ export const darkTheme = {
 
   // 边框颜色
   borders: {
-    primary: '#333333',      // 主要边框
-    secondary: '#404040',    // 次要边框
-    input: '#555555',        // 输入框边框
-    separator: '#404040',    // 分隔线
-    card: '#333333'          // 卡片边框
+    primary: '#3a3a3c',      // 主要边框 (与tertiary背景一致)
+    secondary: '#48484a',    // 次要边框
+    input: '#5a5a5c',        // 输入框边框
+    separator: '#48484a',    // 分隔线
+    card: '#3a3a3c'          // 卡片边框
   },
 
   // 按钮和交互元素
   buttons: {
     primary: '#2196f3',      // 主要按钮背景
     primaryText: '#ffffff',  // 主要按钮文字
-    secondary: '#333333',    // 次要按钮背景
+    secondary: '#3a3a3c',    // 次要按钮背景
     secondaryText: '#e0e0e0', // 次要按钮文字
     success: '#4caf50',      // 成功按钮
     successText: '#ffffff',  // 成功按钮文字
     danger: '#f44336',       // 危险按钮
     dangerText: '#ffffff',   // 危险按钮文字
-    disabled: '#333333',     // 禁用按钮背景
+    disabled: '#3a3a3c',     // 禁用按钮背景
     disabledText: '#666666'  // 禁用按钮文字
   },
 
   // 状态栏
   statusBar: {
     barStyle: 'light-content',
-    backgroundColor: '#121212'
+    backgroundColor: '#1c1c1e'
   },
 
   // 特殊元素
   special: {
     shadow: '#000000',       // 阴影颜色
-    highlight: '#263238',    // 高亮背景
+    highlight: '#2e2e30',    // 高亮背景 (调整为炭色系)
     selected: '#2196f3',     // 选中状态
     calendar: {
       selectedBg: '#2196f3',
