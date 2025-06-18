@@ -44,18 +44,7 @@ export default function Home() {
   const [isRecording, setIsRecording] = useState(false);
 
   // 键盘动画
-  const { height, progress } = useKeyboardAnimation();
-
-  // 创建动画值
-  const headerScale = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 0.98],
-  });
-
-  const headerOpacity = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 0.9],
-  });
+  const { height } = useKeyboardAnimation();
 
   useEffect(() => {
     initializeApp();
@@ -230,23 +219,14 @@ export default function Home() {
         backgroundColor: theme.backgrounds.primary,
       }
     ]}>
-      <Animated.View style={[
-        styles.contentWrapper,
-        {
-          transform: [{ translateY: height }],
-        }
-      ]}>
-      
       
       {/* 日期头部 */}
-      <Animated.View style={[
+      <View style={[
         styles.header,
         { 
           backgroundColor: theme.backgrounds.primary,
           borderBottomColor: theme.borders.primary,
           paddingTop: insets.top + 20, // 使用动态安全区域 + 额外间距
-          transform: [{ scale: headerScale }],
-          opacity: headerOpacity,
         }
       ]}>
         <View style={styles.headerRow}>
@@ -280,10 +260,15 @@ export default function Home() {
             <Text style={[styles.searchIcon, { color: theme.texts.secondary }]}>🔍</Text>
           </TouchableOpacity>
         </View>
-      </Animated.View>
+      </View>
 
       {/* 想法列表 */}
-      <View style={styles.listContainer}>
+      <View style={[
+        styles.listContainer,
+        {
+          paddingBottom: 80, // 为输入区域留出固定空间
+        }
+      ]}>
         <IdeaList
           ideas={ideas}
           setIdeas={setIdeas}
@@ -293,13 +278,18 @@ export default function Home() {
         />
       </View>
 
-      {/* 底部输入区域 */}
-      <View style={[
+      {/* 底部输入区域 - 使用绝对定位 */}
+      <Animated.View style={[
         styles.inputContainer,
         {
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
           backgroundColor: theme.backgrounds.secondary,
           borderTopColor: theme.borders.primary,
           paddingBottom: insets.bottom,
+          transform: [{ translateY: height }],
         }
       ]}>
         {/* 模式切换按钮 */}
@@ -395,8 +385,8 @@ export default function Home() {
               发送
             </Text>
           </TouchableOpacity>
-        )}
-      </View>
+                )}
+      </Animated.View>
       
       {/* 日历模态框 */}
       <SwipeableCalendar
@@ -404,17 +394,13 @@ export default function Home() {
         currentDateString={currentDateString}
         onClose={() => setShowCalendarModal(false)}
         onDateSelect={navigateToDate}
-            />
-      </Animated.View>
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-  },
-  contentWrapper: {
     flex: 1,
   },
   loadingContainer: {

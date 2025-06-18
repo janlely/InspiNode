@@ -12,6 +12,7 @@ import Home from './pages/Home';
 import Search from './pages/Search';
 import EditorPage from './pages/Editor';
 import ImageViewerPage from './pages/ImageViewer';
+import KeyboardTest from './pages/KeyboardTest';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -80,7 +81,7 @@ const App = () => {
           backgroundColor={statusBarStyle.backgroundColor}
         />
         <NavigationContainer ref={navigationRef} theme={navigationTheme}>
-          <Stack.Navigator>
+          <Stack.Navigator initialRouteName="Home">
             <Stack.Screen
               name="Home"
               component={Home}
