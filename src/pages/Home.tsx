@@ -7,16 +7,23 @@ import {
   TouchableOpacity,
   Alert,
   StatusBar,
+  TextInput,
+  KeyboardAvoidingView,
+  Pressable,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../hooks/useTheme.js';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Lucide from '@react-native-vector-icons/lucide';
+import FontAwesome from '@react-native-vector-icons/fontawesome';
 import { RootStackParamList, ContentType } from '../Types';
 import { ideaDB } from '../utils/IdeaDatabase';
 import SwipeableCalendar from '../components/SwipeableCalendar';
 import IdeaList, { IdeaItem } from '../components/IdeaList';
-import { getFinalContentType } from '../utils/ContentTypeUtils';
+import { getFinalContentType, getContentIcon } from '../utils/ContentTypeUtils';
+import { NewIdea } from '../Types';
 
 type HomeNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -25,11 +32,17 @@ export default function Home() {
   // @ts-ignore
   const { theme, getThemedStyle } = useTheme();
   const navigation = useNavigation<HomeNavigationProp>();
+  const insets = useSafeAreaInsets();
   const [ideas, setIdeas] = useState<IdeaItem[]>([]);
   const [currentDate, setCurrentDate] = useState('');
   const [currentDateString, setCurrentDateString] = useState('');
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // 底部输入区域相关状态
+  const [inputText, setInputText] = useState('');
+  const [inputMode, setInputMode] = useState<'keyboard' | 'voice'>('keyboard');
+  const [isRecording, setIsRecording] = useState(false);
 
   useEffect(() => {
     initializeApp();
@@ -126,6 +139,60 @@ export default function Home() {
     return { todo: todoTotal, todoCompleted, idea, learning, note };
   }, [ideas]);
 
+  // 发送文本消息
+  const handleSendMessage = async () => {
+    if (inputText.trim()) {
+      try {
+        const finalCategory = getFinalContentType(inputText);
+        const newIdea: NewIdea = {
+          hint: inputText.trim(),
+          detail: '',
+          date: currentDateString,
+          category: finalCategory,
+          completed: false,
+        };
+        
+        const dbId = await ideaDB.addIdea(newIdea);
+        
+        const newIdeaItem: IdeaItem = {
+          id: Date.now().toString(),
+          text: inputText.trim(),
+          dbId: dbId,
+          completed: false,
+        };
+        
+        setIdeas(prev => [...prev, newIdeaItem]);
+        setInputText('');
+      } catch (error) {
+        console.error('❌ Failed to send message:', error);
+        Alert.alert(t('common.error'), t('errors.cannotCreateIdea'));
+      }
+    }
+  };
+
+  // 切换输入模式
+  const toggleInputMode = () => {
+    setInputMode(prev => prev === 'keyboard' ? 'voice' : 'keyboard');
+  };
+
+  // 开始录音
+  const startRecording = () => {
+    setIsRecording(true);
+    // TODO: 实现录音功能
+    console.log('TODO: 开始录音');
+  };
+
+  // 结束录音
+  const stopRecording = () => {
+    setIsRecording(false);
+    // TODO: 实现录音结束和语音识别
+    console.log('TODO: 结束录音并进行语音识别');
+    
+    // 临时示例：模拟语音识别结果
+    // const recognizedText = "这是语音识别的结果";
+    // setInputText(recognizedText);
+  };
+
   if (isLoading) {
     return (
       <View style={[
@@ -146,7 +213,11 @@ export default function Home() {
   const statusBarStyle = getThemedStyle.statusBar();
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.backgrounds.primary }]}>
+    <KeyboardAvoidingView 
+      style={[styles.container, { backgroundColor: theme.backgrounds.primary }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      // keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
         <StatusBar 
           barStyle={statusBarStyle.barStyle}
           backgroundColor={statusBarStyle.backgroundColor}
@@ -194,13 +265,120 @@ export default function Home() {
         </View>
 
         {/* 想法列表 */}
-        <IdeaList
-          ideas={ideas}
-          setIdeas={setIdeas}
-          currentDateString={currentDateString}
-          showEmptyInput={true}
-          navigation={navigation}
-        />
+        <View style={styles.listContainer}>
+          <IdeaList
+            ideas={ideas}
+            setIdeas={setIdeas}
+            currentDateString={currentDateString}
+            showEmptyInput={false}
+            navigation={navigation}
+          />
+        </View>
+
+        {/* 底部输入区域 */}
+        <View style={[
+          styles.inputContainer,
+          {
+            backgroundColor: theme.backgrounds.secondary,
+            borderTopColor: theme.borders.primary,
+            paddingBottom: insets.bottom,
+          }
+        ]}>
+          {/* 模式切换按钮 */}
+          <TouchableOpacity
+            style={[
+              styles.modeToggleButton,
+              { backgroundColor: theme.backgrounds.tertiary }
+            ]}
+            onPress={toggleInputMode}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            {inputMode === 'keyboard' ? (
+              <Lucide 
+                name="audio-lines" 
+                size={20} 
+                color={theme.texts.secondary} 
+              />
+            ) : (
+              <FontAwesome 
+                name="keyboard-o" 
+                size={18} 
+                color={theme.texts.secondary} 
+              />
+            )}
+          </TouchableOpacity>
+
+          {/* 输入区域 */}
+          <View style={styles.inputAreaContainer}>
+            {inputMode === 'keyboard' ? (
+              /* 键盘模式 - 文本输入框 */
+              <TextInput
+                style={[
+                  styles.textInput,
+                  {
+                    backgroundColor: theme.backgrounds.primary,
+                    borderColor: theme.borders.input,
+                    color: theme.texts.primary,
+                  }
+                ]}
+                value={inputText}
+                onChangeText={setInputText}
+                placeholder={t('placeholders.recordIdea')}
+                placeholderTextColor={theme.texts.tertiary}
+                multiline={true}
+                maxLength={500}
+                returnKeyType="send"
+                onSubmitEditing={handleSendMessage}
+                blurOnSubmit={false}
+              />
+            ) : (
+              /* 语音模式 - 录音按钮 */
+              <Pressable
+                style={[
+                  styles.voiceButton,
+                  {
+                    backgroundColor: isRecording ? theme.buttons.danger : theme.backgrounds.primary,
+                    borderColor: theme.borders.input,
+                  }
+                ]}
+                onPressIn={startRecording}
+                onPressOut={stopRecording}
+                delayLongPress={100}
+              >
+                <Text style={[
+                  styles.voiceButtonText,
+                  { color: isRecording ? theme.buttons.dangerText : theme.texts.secondary }
+                ]}>
+                  {isRecording ? '🔴 录音中...' : '🎤 长按录音'}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+
+          {/* 发送按钮 (仅在键盘模式下显示) */}
+          {inputMode === 'keyboard' && (
+            <TouchableOpacity
+              style={[
+                styles.sendButton,
+                {
+                  backgroundColor: inputText.trim() ? theme.buttons.primary : theme.buttons.disabled,
+                }
+              ]}
+              onPress={handleSendMessage}
+              disabled={!inputText.trim()}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={[
+                styles.sendButtonText,
+                {
+                  color: inputText.trim() ? theme.buttons.primaryText : theme.buttons.disabledText,
+                }
+              ]}>
+                发送
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
         
         {/* 日历模态框 */}
         <SwipeableCalendar
@@ -208,9 +386,9 @@ export default function Home() {
           currentDateString={currentDateString}
           onClose={() => setShowCalendarModal(false)}
           onDateSelect={navigateToDate}
-        />
-      </View>
-  );
+                />
+      </KeyboardAvoidingView>
+    );
 }
 
 const styles = StyleSheet.create({
@@ -273,5 +451,66 @@ const styles = StyleSheet.create({
   },
   searchIcon: {
     fontSize: 28,
+  },
+  // 新增样式 - 列表容器
+  listContainer: {
+    flex: 1,
+  },
+  // 新增样式 - 底部输入区域
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    minHeight: 68, // 44 + 12*2 padding
+  },
+  modeToggleButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+
+  inputAreaContainer: {
+    flex: 1,
+    marginRight: 12,
+  },
+  textInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 16,
+    maxHeight: 120,
+    height: 44,
+  },
+  voiceButton: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  voiceButtonText: {
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  sendButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 60,
+    height: 44,
+  },
+  sendButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

@@ -1595,10 +1595,26 @@
     prompts "^2.4.2"
     semver "^7.5.2"
 
+"@react-native-vector-icons/ant-design@^12.0.1":
+  version "12.0.1"
+  resolved "https://registry.yarnpkg.com/@react-native-vector-icons/ant-design/-/ant-design-12.0.1.tgz#d91dcf2bc699250909ba8f9a99862819e71ade2c"
+  integrity sha512-L7GpDhe9S2i7IHetQyVSteIBWTzwmXvcoxrcBijShjJAzyiX83pskXL16N2Kc1TAPhrpRha9GL4GIBvttDLtzw==
+  dependencies:
+    "@react-native-vector-icons/common" "^12.0.1"
+
 "@react-native-vector-icons/common@^12.0.0":
   version "12.0.0"
   resolved "https://registry.yarnpkg.com/@react-native-vector-icons/common/-/common-12.0.0.tgz#3e5c6678b3c67ae856929c01345103c70f1c420c"
   integrity sha512-hGeWU+DVa1vi49WhjDI+YvGn/vnpLSKJEPoAJagOZae4ewJKSfjoaANcHpxVmDVm/fpA10+a0e3rU7gbzS9lZA==
+  dependencies:
+    "@react-native-community/cli-tools" "^17.0.0"
+    picocolors "^1.1.1"
+    plist "^3.1.0"
+
+"@react-native-vector-icons/common@^12.0.1":
+  version "12.0.1"
+  resolved "https://registry.yarnpkg.com/@react-native-vector-icons/common/-/common-12.0.1.tgz#6c306a51b373dd58a5b33c1b168e66d0d2f82911"
+  integrity sha512-GYcjOzLhJkvtDdYJqRjkKwv/5F74EVsAg5RiZa7hwfsUhop2ECmekUfohdER1nYBDjRKQvRqKuGMHYc8VTFCwA==
   dependencies:
     "@react-native-community/cli-tools" "^17.0.0"
     picocolors "^1.1.1"
@@ -1624,6 +1640,13 @@
   integrity sha512-JSNTzBp7G9zQBOFXSUtd3ZFaoJqAolOjE2ZaQD8ByJZX0ocEMu2i+cFwFDeR8OgCcWRVwM34pMltrlZ0QXsaQA==
   dependencies:
     "@react-native-vector-icons/common" "^12.0.0"
+
+"@react-native-vector-icons/lucide@^12.0.1":
+  version "12.0.1"
+  resolved "https://registry.yarnpkg.com/@react-native-vector-icons/lucide/-/lucide-12.0.1.tgz#fadae889c6372b77d9953460c43d2428b298da7f"
+  integrity sha512-tAMx810jZrL9QdxrbCPNT9r6AxlhTgtgFE/+mZEdCKLNi9daqjRzs1q9eaY0qH2CR8QPbJ+ouT33aqI60YopbQ==
+  dependencies:
+    "@react-native-vector-icons/common" "^12.0.1"
 
 "@react-native/assets-registry@0.79.2":
   version "0.79.2"
@@ -5810,10 +5833,17 @@ react-native-image-picker@^8.2.1:
   resolved "https://registry.yarnpkg.com/react-native-image-picker/-/react-native-image-picker-8.2.1.tgz#1ac7826563cbaa5d5298d9f2acc53c69805e5393"
   integrity sha512-FBeGYJGFDjMdGCcyubDJgBAPCQ4L1D3hwLXyUU91jY9ahOZMTbluceVvRmrEKqnDPFJ0gF1NVhJ0nr1nROFLdg==
 
-react-native-is-edge-to-edge@1.1.7:
+react-native-is-edge-to-edge@1.1.7, react-native-is-edge-to-edge@^1.1.6:
   version "1.1.7"
   resolved "https://registry.yarnpkg.com/react-native-is-edge-to-edge/-/react-native-is-edge-to-edge-1.1.7.tgz#28947688f9fafd584e73a4f935ea9603bd9b1939"
   integrity sha512-EH6i7E8epJGIcu7KpfXYXiV2JFIYITtq+rVS8uEb+92naMRBdxhTuS8Wn2Q7j9sqyO0B+Xbaaf9VdipIAmGW4w==
+
+react-native-keyboard-controller@^1.17.5:
+  version "1.17.5"
+  resolved "https://registry.yarnpkg.com/react-native-keyboard-controller/-/react-native-keyboard-controller-1.17.5.tgz#a517f0d42f73e69a03e768379934a3bb705595f5"
+  integrity sha512-2bZi4uH/beAcHiQ7nv6sxW03/UpNcnNAPpaSnQtg0cbU3ySThPRETMqr0ZupFLUSZovolyFhyFJLjxmQ7cavJg==
+  dependencies:
+    react-native-is-edge-to-edge "^1.1.6"
 
 react-native-localize@^3.4.1:
   version "3.4.1"
