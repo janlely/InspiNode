@@ -6,12 +6,13 @@ import * as RNLocalize from 'react-native-localize';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'react-native';
 import i18n from './i18n';
-import { useTheme } from './hooks/useTheme.js';
+import { useTheme } from './hooks/useTheme';
 import { RootStackParamList } from './Types';
 import Home from './pages/Home';
 import Search from './pages/Search';
 import EditorPage from './pages/Editor';
 import ImageViewerPage from './pages/ImageViewer';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -73,7 +74,7 @@ const App = () => {
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.backgrounds.primary }}>
-      <SafeAreaProvider>
+      <KeyboardProvider>
         <StatusBar 
           barStyle={statusBarStyle.barStyle}
           backgroundColor={statusBarStyle.backgroundColor}
@@ -107,7 +108,7 @@ const App = () => {
             />
           </Stack.Navigator>
         </NavigationContainer>
-      </SafeAreaProvider>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 };

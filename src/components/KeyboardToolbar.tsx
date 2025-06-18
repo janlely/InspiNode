@@ -5,8 +5,7 @@ import Feather from '@react-native-vector-icons/feather';
 import { useTranslation } from 'react-i18next';
 import { launchImageLibrary, ImagePickerResponse, MediaType } from 'react-native-image-picker';
 import RNFS from 'react-native-fs';
-// @ts-ignore
-import { useTheme } from '../hooks/useTheme.js';
+import { useTheme } from '../hooks/useTheme';
 
 export interface KeyboardToolbarProps {
   textInputRef: TextInput | null; // TextInput 引用
@@ -41,7 +40,6 @@ export const KeyboardToolbar: React.FC<KeyboardToolbarProps> = ({
   currentBlockColor,
 }) => {
   const { t } = useTranslation();
-  // @ts-ignore
   const { theme } = useTheme();
   const [showColorPanel, setShowColorPanel] = useState(false);
   

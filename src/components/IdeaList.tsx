@@ -16,8 +16,7 @@ import {
 } from 'react-native';
 import Icon from '@react-native-vector-icons/fontawesome';
 import { useTranslation } from 'react-i18next';
-// @ts-ignore
-import { useTheme } from '../hooks/useTheme.js';
+import { useTheme } from '../hooks/useTheme';
 import { ideaDB } from '../utils/IdeaDatabase';
 import { NewIdea, UpdateIdea } from '../Types'
 import { ContentType } from '../Types';
@@ -53,7 +52,6 @@ export const IdeaList: React.FC<IdeaListProps> = ({
   navigation,
 }) => {
   const { t } = useTranslation();
-  // @ts-ignore
   const { theme } = useTheme();
   const [emptyInputValue, setEmptyInputValue] = useState('');
   const [emptyInputCategory, setEmptyInputCategory] = useState<string | undefined>(undefined);

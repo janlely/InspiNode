@@ -14,7 +14,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import { useTheme } from '../hooks/useTheme.js';
+import { useTheme } from '../hooks/useTheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Lucide from '@react-native-vector-icons/lucide';
 import FontAwesome from '@react-native-vector-icons/fontawesome';
@@ -29,7 +29,6 @@ type HomeNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 export default function Home() {
   const { t, i18n } = useTranslation();
-  // @ts-ignore
   const { theme, getThemedStyle } = useTheme();
   const navigation = useNavigation<HomeNavigationProp>();
   const insets = useSafeAreaInsets();

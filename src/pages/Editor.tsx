@@ -13,8 +13,7 @@ type EditorProps = NavigationProps<'Editor'>;
 
 export default function Editor({ navigation, route }: EditorProps) {
   const { t } = useTranslation();
-  // @ts-ignore
-  const { theme, styles: themeStyles } = useTheme();
+  const { theme, getThemedStyle } = useTheme();
   const { idea } = route.params;
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [originalBlockIds, setOriginalBlockIds] = useState<Set<string>>(new Set()); // 跟踪从数据库加载的原始block IDs

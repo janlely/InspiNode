@@ -21,8 +21,7 @@ import { CONTENT_TYPES, getFinalContentType } from '../utils/ContentTypeUtils';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Icon from '@react-native-vector-icons/fontawesome';
-// @ts-ignore
-import { useTheme } from '../hooks/useTheme.js';
+import { useTheme } from '../hooks/useTheme';
 
 type SearchNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Search'>;
 
@@ -41,7 +40,6 @@ interface FilterCriteria {
 
 export default function Search() {
   const { t } = useTranslation();
-  // @ts-ignore
   const { theme, getThemedStyle } = useTheme();
   const navigation = useNavigation<SearchNavigationProp>();
   const [filteredIdeas, setFilteredIdeas] = useState<IdeaItem[]>([]);

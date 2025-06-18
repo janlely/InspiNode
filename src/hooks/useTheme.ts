@@ -2,11 +2,95 @@ import { useMemo } from 'react';
 import { useColorScheme } from 'react-native';
 import { lightTheme, darkTheme, THEME_TYPES } from '../theme';
 
+// 主题类型定义
+export interface Theme {
+  backgrounds: {
+    primary: string;
+    secondary: string;
+    tertiary: string;
+    modal: string;
+    toolbar: string;
+    calendar: string;
+    error: string;
+  };
+  texts: {
+    primary: string;
+    secondary: string;
+    tertiary: string;
+    inverse: string;
+    error: string;
+    link: string;
+    success: string;
+    disabled: string;
+  };
+  borders: {
+    primary: string;
+    secondary: string;
+    input: string;
+    separator: string;
+    card: string;
+  };
+  buttons: {
+    primary: string;
+    primaryText: string;
+    secondary: string;
+    secondaryText: string;
+    success: string;
+    successText: string;
+    danger: string;
+    dangerText: string;
+    disabled: string;
+    disabledText: string;
+  };
+  statusBar: {
+    barStyle: 'dark-content' | 'light-content';
+    backgroundColor: string;
+  };
+  special: {
+    shadow: string;
+    highlight: string;
+    selected: string;
+    calendar: {
+      selectedBg: string;
+      selectedText: string;
+      todayText: string;
+      markedDot: string;
+    };
+  };
+}
+
+export interface UseThemeReturn {
+  theme: Theme;
+  themeType: string;
+  isDark: boolean;
+  isLight: boolean;
+  getThemedStyle: {
+    container: (customStyle?: object) => object;
+    card: (customStyle?: object) => object;
+    text: (type?: string, customStyle?: object) => object;
+    button: (type?: string, customStyle?: object) => object;
+    border: (type?: string, customStyle?: object) => object;
+    input: (customStyle?: object) => object;
+    statusBar: () => {
+      barStyle: 'dark-content' | 'light-content';
+      backgroundColor: string;
+    };
+  };
+  colors: {
+    background: string;
+    surface: string;
+    text: string;
+    textSecondary: string;
+    border: string;
+    primary: string;
+  };
+}
+
 /**
  * 主题Hook - 提供当前主题配置和主题相关功能
- * @returns {Object} 包含当前主题、主题类型和工具函数的对象
+ * @returns {UseThemeReturn} 包含当前主题、主题类型和工具函数的对象
  */
-export const useTheme = () => {
+export const useTheme = (): UseThemeReturn => {
   // 获取系统色彩方案
   const systemColorScheme = useColorScheme();
 
@@ -15,7 +99,7 @@ export const useTheme = () => {
 
   // 获取当前主题配置
   const theme = useMemo(() => {
-    return themeType === THEME_TYPES.DARK ? darkTheme : lightTheme;
+    return themeType === THEME_TYPES.DARK ? darkTheme as Theme : lightTheme as Theme;
   }, [themeType]);
 
   // 判断是否为暗色主题
@@ -42,19 +126,19 @@ export const useTheme = () => {
 
     // 获取文本样式
     text: (type = 'primary', customStyle = {}) => ({
-      color: theme.texts[type] || theme.texts.primary,
+      color: theme.texts[type as keyof typeof theme.texts] || theme.texts.primary,
       ...customStyle
     }),
 
     // 获取按钮样式
     button: (type = 'primary', customStyle = {}) => ({
-      backgroundColor: theme.buttons[type] || theme.buttons.primary,
+      backgroundColor: theme.buttons[type as keyof typeof theme.buttons] || theme.buttons.primary,
       ...customStyle
     }),
 
     // 获取边框样式
     border: (type = 'primary', customStyle = {}) => ({
-      borderColor: theme.borders[type] || theme.borders.primary,
+      borderColor: theme.borders[type as keyof typeof theme.borders] || theme.borders.primary,
       ...customStyle
     }),
 

@@ -7,8 +7,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-// @ts-ignore
-import { useTheme } from '../hooks/useTheme.js';
+import { useTheme } from '../hooks/useTheme';
 
 interface ColorPickerProps {
   visible: boolean;
@@ -24,7 +23,6 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
   height,
 }) => {
   const { t } = useTranslation();
-  // @ts-ignore
   const { theme } = useTheme();
   
   // 预定义的颜色列表

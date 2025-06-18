@@ -10,8 +10,7 @@ import {
 } from 'react-native';
 import { Calendar, CalendarList, DateData, LocaleConfig } from 'react-native-calendars';
 import { useTranslation } from 'react-i18next';
-// @ts-ignore
-import { useTheme } from '../hooks/useTheme.js';
+import { useTheme } from '../hooks/useTheme';
 import { ideaDB } from '../utils/IdeaDatabase';
 
 // 配置本地化，确保周日是第一天
@@ -65,7 +64,6 @@ const SwipeableCalendar: React.FC<SwipeableCalendarProps> = ({
   onDateSelect,
 }) => {
   const { t, i18n } = useTranslation();
-  // @ts-ignore
   const { theme } = useTheme();
   const [datesWithIdeas, setDatesWithIdeas] = useState<{ [key: string]: string[] }>({});
   const [isLoading, setIsLoading] = useState(false);
