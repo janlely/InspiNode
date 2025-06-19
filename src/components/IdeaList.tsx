@@ -23,7 +23,7 @@ import {
 
 export interface IdeaItem {
   id: string;
-  text: string;
+  hint: string;
   dbId?: number; // 数据库中的真实ID
   manualCategory?: string; // 手动选择的分类
   completed?: boolean; // 完成状态
@@ -122,7 +122,7 @@ export const IdeaList: React.FC<IdeaListProps> = ({
     const filteredText = text.replace(/\n/g, '');
     setIdeas(prev => 
       prev.map(idea => 
-        idea.id === id ? { ...idea, text: filteredText } : idea
+        idea.id === id ? { ...idea, hint: filteredText } : idea
       )
     );
   };
@@ -134,7 +134,7 @@ export const IdeaList: React.FC<IdeaListProps> = ({
     
     setEditingIdeaId(null);
     
-    if (idea.text.trim() === '') {
+    if (idea.hint.trim() === '') {
       setIdeas(prev => prev.filter(i => i.id !== id));
       
       if (idea.dbId) {
@@ -150,7 +150,7 @@ export const IdeaList: React.FC<IdeaListProps> = ({
     try {
       if (idea.dbId) {
         const updatedRecord: UpdateIdea = {
-          hint: idea.text.trim(),
+          hint: idea.hint.trim(),
         };
         await ideaDB.updateIdea(idea.dbId, updatedRecord);
       }
@@ -236,8 +236,9 @@ export const IdeaList: React.FC<IdeaListProps> = ({
   };
 
   const renderIdeaItem = ({ item, index }: { item: IdeaItem; index: number }) => {
+    console.log('item: ', item);
     const isEditing = editingIdeaId === item.id;
-    const finalCategory = getFinalContentType(item.text, item.manualCategory);
+    const finalCategory = getFinalContentType(item.hint, item.manualCategory);
     const contentConfig = CONTENT_TYPES[finalCategory];
     const showCheckbox = finalCategory === ContentType.TODO;
 
@@ -276,7 +277,7 @@ export const IdeaList: React.FC<IdeaListProps> = ({
                 color: theme.texts.primary,
               }
             ]}
-            value={item.text}
+            value={item.hint}
             onChangeText={(text) => updateIdea(item.id, text)}
             onBlur={() => finishEditingIdea(item.id)}
             onSubmitEditing={() => finishEditingIdea(item.id)}
@@ -301,7 +302,7 @@ export const IdeaList: React.FC<IdeaListProps> = ({
                 opacity: item.completed ? 0.6 : 1,
               }
             ]}>
-              {item.text}
+              {item.hint}
             </Text>
           </TouchableOpacity>
         )}
@@ -344,11 +345,7 @@ export const IdeaList: React.FC<IdeaListProps> = ({
             }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Icon
-              name="edit"
-              size={14}
-              color={theme.texts.secondary}
-            />
+            <Icon name="expand" size={20} color={theme.texts.secondary} />
           </TouchableOpacity>
         )}
       </View>

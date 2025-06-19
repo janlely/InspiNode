@@ -108,7 +108,7 @@ export default function Home() {
       
       const formattedIdeas: IdeaItem[] = dbIdeas.map((dbIdea) => ({
         id: dbIdea.id.toString(),
-        text: dbIdea.hint,
+        hint: dbIdea.hint,
         dbId: dbIdea.id,
         manualCategory: dbIdea.category || undefined,
         completed: !!dbIdea.completed, // 转换为boolean类型
@@ -152,12 +152,12 @@ export default function Home() {
 
   // 计算分类统计
   const categoryStats = React.useMemo(() => {
-    const todoItems = ideas.filter(i => getFinalContentType(i.text, i.manualCategory) === ContentType.TODO);
+    const todoItems = ideas.filter(i => getFinalContentType(i.hint, i.manualCategory) === ContentType.TODO);
     const todoCompleted = todoItems.filter(i => i.completed).length;
     const todoTotal = todoItems.length;
-    const idea = ideas.filter(i => getFinalContentType(i.text, i.manualCategory) === ContentType.IDEA).length;
-    const learning = ideas.filter(i => getFinalContentType(i.text, i.manualCategory) === ContentType.LEARNING).length;
-    const note = ideas.filter(i => getFinalContentType(i.text, i.manualCategory) === ContentType.NOTE).length;
+    const idea = ideas.filter(i => getFinalContentType(i.hint, i.manualCategory) === ContentType.IDEA).length;
+    const learning = ideas.filter(i => getFinalContentType(i.hint, i.manualCategory) === ContentType.LEARNING).length;
+    const note = ideas.filter(i => getFinalContentType(i.hint, i.manualCategory) === ContentType.NOTE).length;
     
     return { todo: todoTotal, todoCompleted, idea, learning, note };
   }, [ideas]);
@@ -179,7 +179,7 @@ export default function Home() {
         
         const newIdeaItem: IdeaItem = {
           id: Date.now().toString(),
-          text: inputText.trim(),
+          hint: inputText.trim(),
           dbId: dbId,
           completed: false,
         };
@@ -319,7 +319,7 @@ export default function Home() {
         {
           backgroundColor: theme.backgrounds.secondary,
           borderTopColor: theme.borders.primary,
-          paddingBottom: insets.bottom,
+          paddingBottom: insets.bottom + 10,
           // marginBottom: 400
           transform: [{ translateY: height}],
         }

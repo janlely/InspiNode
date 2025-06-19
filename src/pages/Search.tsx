@@ -76,7 +76,7 @@ export default function Search() {
       // 转换为IdeaItem格式
       let results: IdeaItem[] = allIdeas.map((dbIdea) => ({
         id: dbIdea.id.toString(),
-        text: dbIdea.hint,
+        hint: dbIdea.hint,
         dbId: dbIdea.id,
         manualCategory: dbIdea.category || undefined,
         completed: !!dbIdea.completed,
@@ -86,14 +86,14 @@ export default function Search() {
       if (searchFilters.keyword.trim()) {
         const keyword = searchFilters.keyword.toLowerCase();
         results = results.filter(idea => 
-          idea.text.toLowerCase().includes(keyword)
+          idea.hint.toLowerCase().includes(keyword)
         );
       }
 
       // 应用分类筛选
       if (searchFilters.categories.length > 0) {
         results = results.filter(idea => {
-          const ideaType = getFinalContentType(idea.text, idea.manualCategory);
+          const ideaType = getFinalContentType(idea.hint, idea.manualCategory);
           return searchFilters.categories.includes(ideaType);
         });
       }
@@ -147,7 +147,7 @@ export default function Search() {
       // 应用完成状态筛选（仅对TODO类型）
       if (searchFilters.completedFilter !== 'all') {
         results = results.filter(idea => {
-          const ideaType = getFinalContentType(idea.text, idea.manualCategory);
+          const ideaType = getFinalContentType(idea.hint, idea.manualCategory);
           if (ideaType !== ContentType.TODO) return true; // 非TODO类型始终显示
           
           if (searchFilters.completedFilter === 'completed') {

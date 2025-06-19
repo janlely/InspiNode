@@ -34,6 +34,7 @@ export default function Editor({ navigation, route }: EditorProps) {
 
   // 加载数据
   useEffect(() => {
+    console.log('idea: ', idea);
     loadBlocks();
   }, [idea.id]);
 
@@ -774,7 +775,7 @@ export default function Editor({ navigation, route }: EditorProps) {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgrounds.primary }]}>
-      <StatusBar barStyle={theme.statusBar.barStyle} backgroundColor={theme.statusBar.backgroundColor} />
+      {/* <StatusBar barStyle={theme.statusBar.barStyle} backgroundColor={theme.statusBar.backgroundColor} /> */}
       <View style={[styles.header, { 
         backgroundColor: theme.backgrounds.primary, 
         borderBottomColor: theme.borders.primary 
@@ -905,7 +906,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingTop: 20,
     paddingBottom: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
