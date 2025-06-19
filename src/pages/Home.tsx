@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  Platform,
   TouchableOpacity,
   Alert,
   TextInput,
@@ -44,11 +43,33 @@ export default function Home() {
   const [isRecording, setIsRecording] = useState(false);
 
   // 键盘动画
-  const { height } = useKeyboardAnimation();
+  const { height, progress } = useKeyboardAnimation();
+  
+  // IdeaList 滚动控制
+  const ideaListRef = useRef<{ scrollToEnd: () => void } | null>(null);
 
   useEffect(() => {
     initializeApp();
   }, []);
+
+  // 监听键盘动画，当键盘拉起时滚动到底部
+  useEffect(() => {
+    const listener = progress.addListener(({ value }) => {
+      // console.log('🔍 Keyboard progress changed:', value);
+      // 当键盘开始拉起时（progress > 0.1）自动滚动到底部
+      if (value > 0.1 && ideaListRef.current) {
+        setTimeout(() => {
+          ideaListRef.current?.scrollToEnd();
+        }, 100); // 延迟一下确保动画流畅
+      }
+    });
+
+    return () => {
+      progress.removeListener(listener);
+    };
+  }, [progress]);
+
+
 
   const initializeApp = async () => {
     try {
@@ -165,6 +186,11 @@ export default function Home() {
         
         setIdeas(prev => [...prev, newIdeaItem]);
         setInputText('');
+        
+        // 添加想法后滚动到底部，让用户看到新添加的内容
+        setTimeout(() => {
+          ideaListRef.current?.scrollToEnd();
+        }, 100);
       } catch (error) {
         console.error('❌ Failed to send message:', error);
         Alert.alert(t('common.error'), t('errors.cannotCreateIdea'));
@@ -218,78 +244,84 @@ export default function Home() {
       { 
         backgroundColor: theme.backgrounds.primary,
       }
-    ]}>
+    ]}
+    onLayout={(event) => {
+      const { height: layoutHeight } = event.nativeEvent.layout;
+      // 不再需要记录屏幕高度
+    }}>
       
-      {/* 日期头部 */}
+      {/* 主内容区域 - 动态调整高度 */}
       <View style={[
-        styles.header,
-        { 
-          backgroundColor: theme.backgrounds.primary,
-          borderBottomColor: theme.borders.primary,
-          paddingTop: insets.top + 20, // 使用动态安全区域 + 额外间距
-        }
+        styles.contentContainer,
       ]}>
-        <View style={styles.headerRow}>
-          {/* 日历按钮 */}
-          <TouchableOpacity 
-            style={styles.calendarButton}
-            onPress={() => setShowCalendarModal(true)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={[styles.calendarIcon, { color: theme.texts.secondary }]}>📅</Text>
-          </TouchableOpacity>
-          
-          {/* 日期与统计信息的容器 */}
-          <View style={styles.centerContent}>
-            <Text style={[styles.dateText, { color: theme.texts.primary }]}>
-              {currentDate}
-            </Text>
-            <View style={styles.statsContainer}>
-              <Text style={[styles.statsText, { color: theme.texts.secondary }]}>
-                📝{categoryStats.todoCompleted}/{categoryStats.todo} | 💡{categoryStats.idea} | 📚{categoryStats.learning} | 📄{categoryStats.note}
+        {/* 日期头部 */}
+        <View style={[
+          styles.header,
+          { 
+            backgroundColor: theme.backgrounds.primary,
+            borderBottomColor: theme.borders.primary,
+            paddingTop: insets.top + 20, // 使用动态安全区域 + 额外间距
+          }
+        ]}>
+          <View style={styles.headerRow}>
+            {/* 日历按钮 */}
+            <TouchableOpacity 
+              style={styles.calendarButton}
+              onPress={() => setShowCalendarModal(true)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Text style={[styles.calendarIcon, { color: theme.texts.secondary }]}>📅</Text>
+            </TouchableOpacity>
+            
+            {/* 日期与统计信息的容器 */}
+            <View style={styles.centerContent}>
+              <Text style={[styles.dateText, { color: theme.texts.primary }]}>
+                {currentDate}
               </Text>
+              <View style={styles.statsContainer}>
+                <Text style={[styles.statsText, { color: theme.texts.secondary }]}>
+                  📝{categoryStats.todoCompleted}/{categoryStats.todo} | 💡{categoryStats.idea} | 📚{categoryStats.learning} | 📄{categoryStats.note}
+                </Text>
+              </View>
             </View>
+            
+            {/* 搜索按钮 */}
+            <TouchableOpacity 
+              style={styles.searchButton}
+              onPress={() => navigation.navigate('Search')}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Text style={[styles.searchIcon, { color: theme.texts.secondary }]}>🔍</Text>
+            </TouchableOpacity>
           </View>
-          
-          {/* 搜索按钮 */}
-          <TouchableOpacity 
-            style={styles.searchButton}
-            onPress={() => navigation.navigate('Search')}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={[styles.searchIcon, { color: theme.texts.secondary }]}>🔍</Text>
-          </TouchableOpacity>
+        </View>
+
+        {/* 想法列表 */}
+        <View style={[
+          styles.listContainer,
+          // {
+          //   paddingBottom: 80, // 为输入区域留出固定空间
+          // }
+        ]}>
+          <IdeaList
+            ideas={ideas}
+            setIdeas={setIdeas}
+            currentDateString={currentDateString}
+            navigation={navigation}
+            onRef={(ref) => { ideaListRef.current = ref; }}
+          />
         </View>
       </View>
 
-      {/* 想法列表 */}
-      <View style={[
-        styles.listContainer,
-        {
-          paddingBottom: 80, // 为输入区域留出固定空间
-        }
-      ]}>
-        <IdeaList
-          ideas={ideas}
-          setIdeas={setIdeas}
-          currentDateString={currentDateString}
-          showEmptyInput={false}
-          navigation={navigation}
-        />
-      </View>
-
-      {/* 底部输入区域 - 使用绝对定位 */}
+      {/* 底部输入区域 */}
       <Animated.View style={[
         styles.inputContainer,
         {
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
           backgroundColor: theme.backgrounds.secondary,
           borderTopColor: theme.borders.primary,
           paddingBottom: insets.bottom,
-          transform: [{ translateY: height }],
+          // marginBottom: 400
+          transform: [{ translateY: height}],
         }
       ]}>
         {/* 模式切换按钮 */}
@@ -353,12 +385,12 @@ export default function Home() {
               onPressOut={stopRecording}
               delayLongPress={100}
             >
-                               <Text style={[
-                   styles.voiceButtonText,
-                   { color: isRecording ? theme.buttons.dangerText : theme.texts.secondary }
-                 ]}>
-                   {isRecording ? t('buttons.recording') : t('buttons.pressToRecord')}
-                 </Text>
+              <Text style={[
+                styles.voiceButtonText,
+                { color: isRecording ? theme.buttons.dangerText : theme.texts.secondary }
+              ]}>
+                {isRecording ? t('buttons.recording') : t('buttons.pressToRecord')}
+              </Text>
             </Pressable>
           )}
         </View>
@@ -376,16 +408,16 @@ export default function Home() {
             disabled={!inputText.trim()}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-                         <Text style={[
-               styles.sendButtonText,
-               {
-                 color: inputText.trim() ? theme.buttons.primaryText : theme.buttons.disabledText,
-               }
-             ]}>
-               {t('buttons.add')}
-             </Text>
+            <Text style={[
+              styles.sendButtonText,
+              {
+                color: inputText.trim() ? theme.buttons.primaryText : theme.buttons.disabledText,
+              }
+            ]}>
+              {t('buttons.add')}
+            </Text>
           </TouchableOpacity>
-                )}
+        )}
       </Animated.View>
       
       {/* 日历模态框 */}
@@ -401,6 +433,9 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  contentContainer: {
     flex: 1,
   },
   loadingContainer: {
@@ -470,7 +505,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderTopWidth: 1,
-    minHeight: 68, // 44 + 12*2 padding
+    // minHeight: 68, // 44 + 12*2 padding
   },
   modeToggleButton: {
     width: 44,

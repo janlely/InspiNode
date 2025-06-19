@@ -725,7 +725,7 @@ export default function Search() {
         ideas={filteredIdeas}
         setIdeas={setFilteredIdeas}
         currentDateString={new Date().toISOString().split('T')[0]}
-        showEmptyInput={false}
+
       />
 
       {/* 筛选模态框 */}
