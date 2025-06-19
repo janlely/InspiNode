@@ -21,8 +21,8 @@ const resources = {
       // Buttons
       buttons: {
         add: 'Add',
-        recording: '🔴 Recording...',
-        pressToRecord: '🎤 Press to Record'
+        recording: 'Recording...',
+        pressToRecord: 'Press to Record'
       },
 
       // Colors
@@ -105,8 +105,8 @@ const resources = {
       // Buttons
       buttons: {
         add: '添加',
-        recording: '🔴 录音中...',
-        pressToRecord: '🎤 长按录音'
+        recording: '录音中...',
+        pressToRecord: '按住说话'
       },
 
       // Colors
