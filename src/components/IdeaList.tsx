@@ -10,6 +10,7 @@ import {
   Pressable,
   Keyboard,
 } from 'react-native';
+import ResizableInput from './ResizableInput';
 import Icon from '@react-native-vector-icons/fontawesome';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../hooks/useTheme';
@@ -268,7 +269,7 @@ export const IdeaList: React.FC<IdeaListProps> = ({
 
         {/* 想法内容 */}
         {isEditing ? (
-          <TextInput
+          <ResizableInput
             ref={(ref) => { inputRefs.current[item.id] = ref; }}
             style={[
               styles.ideaInput,
@@ -282,11 +283,12 @@ export const IdeaList: React.FC<IdeaListProps> = ({
             onBlur={() => finishEditingIdea(item.id)}
             onSubmitEditing={() => finishEditingIdea(item.id)}
             onFocus={() => handleInputFocus(item.id, index)}
-            multiline={true}
             returnKeyType="done"
             blurOnSubmit={true}
             placeholder={`${t('placeholders.recordIdea')}`}
             placeholderTextColor={theme.texts.tertiary}
+            minHeight={30}
+            maxHeight={100}
           />
         ) : (
           <TouchableOpacity
@@ -491,7 +493,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     paddingVertical: 4,
-    height: 30,
+    textAlignVertical: 'top', // Android上确保文本从顶部开始
   },
   modalOverlay: {
     flex: 1,
