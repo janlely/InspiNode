@@ -35,7 +35,11 @@ interface IdeaListProps {
   setIdeas: React.Dispatch<React.SetStateAction<IdeaItem[]>>;
   currentDateString: string;
   navigation?: any; // 导航对象，用于跳转到BlockEditor
-  onRef?: (ref: { scrollToEnd: () => void } | null) => void; // 暴露滚动方法
+  onRef?: (ref: { 
+    scrollToEnd: () => void;
+    scrollToIndex: (index: number) => void;
+  } | null) => void; // 暴露滚动方法
+  onItemFocus?: (index: number) => void; // 新增：item获得焦点时的回调
 }
 
 export const IdeaList: React.FC<IdeaListProps> = ({
@@ -43,6 +47,7 @@ export const IdeaList: React.FC<IdeaListProps> = ({
   setIdeas,
   navigation,
   onRef,
+  onItemFocus,
 }) => {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -96,6 +101,18 @@ export const IdeaList: React.FC<IdeaListProps> = ({
       onRef({
         scrollToEnd: () => {
           flatListRef.current?.scrollToEnd({ animated: true });
+        },
+        scrollToIndex: (index: number) => {
+          try {
+            flatListRef.current?.scrollToIndex({
+              index,
+              animated: true,
+              viewPosition: 0, // 将item置于视窗顶部
+            });
+          } catch (error) {
+            // 如果scrollToIndex失败，使用fallback
+            console.warn('scrollToIndex failed, using fallback');
+          }
         }
       });
     }
@@ -162,17 +179,8 @@ export const IdeaList: React.FC<IdeaListProps> = ({
 
   // 处理输入框焦点事件
   const handleInputFocus = (ideaId: string, index: number) => {
-    if (flatListRef.current && index >= 0) {
-      try {
-        flatListRef.current.scrollToIndex({
-          index,
-          animated: true,
-          viewPosition: 0.5,
-        });
-      } catch (error) {
-        // 如果scrollToIndex失败，使用fallback
-      }
-    }
+    // 通知父组件哪个item获得了焦点
+    onItemFocus?.(index);
   };
 
   // 点击图标打开分类选择

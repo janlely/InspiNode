@@ -42,24 +42,37 @@ export default function Home() {
   const [inputMode, setInputMode] = useState<'keyboard' | 'voice'>('keyboard');
   const [isRecording, setIsRecording] = useState(false);
 
+  // 焦点状态管理
+  const [focusedItemIndex, setFocusedItemIndex] = useState<number | null>(null);
+  const [isBottomInputFocused, setIsBottomInputFocused] = useState(false);
+
   // 键盘动画
   const { height, progress } = useKeyboardAnimation();
   
   // IdeaList 滚动控制
-  const ideaListRef = useRef<{ scrollToEnd: () => void } | null>(null);
+  const ideaListRef = useRef<{ 
+    scrollToEnd: () => void;
+    scrollToIndex: (index: number) => void;
+  } | null>(null);
 
   useEffect(() => {
     initializeApp();
   }, []);
 
-  // 监听键盘动画，当键盘拉起时滚动到底部
+  // 监听键盘动画，根据焦点类型执行不同的滚动行为
   useEffect(() => {
     const listener = progress.addListener(({ value }) => {
       // console.log('🔍 Keyboard progress changed:', value);
-      // 当键盘开始拉起时（progress > 0.1）自动滚动到底部
+      // 当键盘开始拉起时（progress > 0.1）执行相应的滚动行为
       if (value > 0.1 && ideaListRef.current) {
         setTimeout(() => {
-          ideaListRef.current?.scrollToEnd();
+          if (isBottomInputFocused) {
+            // 底部输入框：滚动到底部
+            ideaListRef.current?.scrollToEnd();
+          } else if (focusedItemIndex !== null) {
+            // 列表项：滚动到指定索引的顶部
+            ideaListRef.current?.scrollToIndex(focusedItemIndex);
+          }
         }, 100); // 延迟一下确保动画流畅
       }
     });
@@ -67,7 +80,7 @@ export default function Home() {
     return () => {
       progress.removeListener(listener);
     };
-  }, [progress]);
+  }, [progress, isBottomInputFocused, focusedItemIndex]);
 
 
 
@@ -309,6 +322,10 @@ export default function Home() {
             currentDateString={currentDateString}
             navigation={navigation}
             onRef={(ref) => { ideaListRef.current = ref; }}
+            onItemFocus={(index) => {
+              setFocusedItemIndex(index);
+              setIsBottomInputFocused(false); // 清除底部输入框焦点状态
+            }}
           />
         </View>
       </View>
@@ -370,6 +387,11 @@ export default function Home() {
               returnKeyType="send"
               onSubmitEditing={handleSendMessage}
               blurOnSubmit={false}
+              onFocus={() => {
+                setIsBottomInputFocused(true);
+                setFocusedItemIndex(null); // 清除列表项焦点状态
+              }}
+              onBlur={() => setIsBottomInputFocused(false)}
             />
           ) : (
             /* 语音模式 - 录音按钮 */
