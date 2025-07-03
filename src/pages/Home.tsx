@@ -21,14 +21,14 @@ import { RootStackParamList, ContentType } from '../Types';
 import { ideaDB } from '../utils/IdeaDatabase';
 import SwipeableCalendar from '../components/SwipeableCalendar';
 import IdeaList, { IdeaItem } from '../components/IdeaList';
-import { getFinalContentType, getContentIcon } from '../utils/ContentTypeUtils';
+import { getFinalContentType } from '../utils/ContentTypeUtils';
 import { NewIdea } from '../Types';
 
 type HomeNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 export default function Home() {
   const { t, i18n } = useTranslation();
-  const { theme, getThemedStyle } = useTheme();
+  const { theme } = useTheme();
   const navigation = useNavigation<HomeNavigationProp>();
   const insets = useSafeAreaInsets();
   const [ideas, setIdeas] = useState<IdeaItem[]>([]);
@@ -549,7 +549,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 16,
     maxHeight: 120,
-    height: 44,
+    minHeight: 44,
   },
   voiceButton: {
     borderWidth: 1,
